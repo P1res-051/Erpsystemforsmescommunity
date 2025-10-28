@@ -135,6 +135,15 @@ class FindTagIn(BaseModel):
     apiKey: str = Field(..., min_length=10)
     name: str = Field(..., min_length=1, max_length=64)
 
+# Gestor webhook input
+class GestorLinkIn(BaseModel):
+    telefone: str
+    loginGestor: str
+    senhaGestor: str
+    loginPainel: str
+    SenhaPainel: str
+    executionMode: Optional[str] = None
+
 # -----------------------
 # Simulação (modo fake)
 # -----------------------
@@ -413,6 +422,36 @@ async def bulk_attach(body: BulkAttachIn):
         "invalid": invalid,
         "details": details,
     }
+
+# =====================
+# Gestor - Proxy n8n
+# =====================
+@app.post("/gestor/link-pagamento")
+async def gestor_link_pagamento(body: GestorLinkIn):
+    """
+    Encaminha para o webhook n8n que gera/consulta o Link de Pagamento do Gestor.
+    Mantém credenciais fora do frontend e evita CORS.
+    """
+    webhook_url = "https://n8n-hook.makesystem.com.br/webhook/link-pagamento"
+    payload = body.dict()
+    # limpar campos None
+    for k in list(payload.keys()):
+        if payload[k] is None:
+            del payload[k]
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        try:
+            resp = await client.post(webhook_url, json=payload, headers={"Content-Type": "application/json"})
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Erro de rede ao webhook Gestor: {e}")
+    # tentar devolver JSON; senão, texto
+    ct = resp.headers.get("content-type", "").lower()
+    if "application/json" in ct:
+        try:
+            return resp.json()
+        except Exception:
+            pass
+    text = resp.text or ""
+    return {"status": resp.status_code, "body": text}
 
 @app.get("/")
 async def root():
