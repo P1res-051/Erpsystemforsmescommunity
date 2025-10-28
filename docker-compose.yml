@@ -1,8 +1,14 @@
-version: "3.8"
-
 services:
   web:
-    build: .
+    image: alecmoura10/dashboard-iptv:latest
+    pull_policy: always
+    container_name: dashboard-iptv-web
     ports:
       - "3001:80"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
