@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,5 +32,5 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: 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
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
