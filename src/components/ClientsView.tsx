@@ -12,7 +12,7 @@ import {
   Search, Filter, Users, CheckCircle, XCircle, Star, Download, 
   List, MessageCircle, MapPin, TrendingUp, Clock, ChevronLeft, 
   ChevronRight, Send, AlertCircle, Check, X, Loader2, Tag, Calendar,
-  Upload
+  Upload, Link
 } from 'lucide-react';
 import { parseDate, formatDate } from '../utils/dataProcessing';
 import * as XLSX from 'xlsx';
@@ -21,7 +21,7 @@ interface Props {
   data: DashboardData;
 }
 
-type ViewSection = 'lista' | 'cobranca' | 'analise' | 'localizacao' | 'historico';
+type ViewSection = 'lista' | 'cobranca' | 'analise' | 'localizacao' | 'historico' | 'gestor';
 
 const COLORS = {
   fundo: '#0a0e1a',
@@ -97,16 +97,325 @@ export function ClientsView({ data }: Props) {
   const [searchingTag, setSearchingTag] = useState(false);
   const [expiredPeriod, setExpiredPeriod] = useState<string>('7');
 
+  // Estados para Link Gestor
+  const [loginGestor, setLoginGestor] = useState('');
+  const [senhaGestor, setSenhaGestor] = useState('');
+  const [loginPainel, setLoginPainel] = useState('');
+  const [senhaPainel, setSenhaPainel] = useState('');
+  const [gestorPhone, setGestorPhone] = useState('');
+  const [gestorLink, setGestorLink] = useState<string | null>(null);
+  const [gestorLoading, setGestorLoading] = useState(false);
+  const [gestorStatus, setGestorStatus] = useState<string>('');
+  const [linksMapa, setLinksMapa] = useState<Record<string, string>>({});
+  const [scanProgress, setScanProgress] = useState<number>(0);
+  const [clientesSemLink, setClientesSemLink] = useState<Set<string>>(new Set());
+  const [demoMode, setDemoMode] = useState<boolean>(false);
+  const [totalParaPesquisar, setTotalParaPesquisar] = useState<number>(0);
+  const [processados, setProcessados] = useState<number>(0);
+  const [scanInProgress, setScanInProgress] = useState<boolean>(false);
+  const [scanLogs, setScanLogs] = useState<Array<{ ts: number; msg: string; level: 'info' | 'warn' | 'error' }>>([]);
+  const [exibirSegredos, setExibirSegredos] = useState<boolean>(false);
+
+  const logScan = (msg: string, level: 'info' | 'warn' | 'error' = 'info') => {
+    const entry = { ts: Date.now(), msg, level };
+    setScanLogs(prev => (prev.length > 500 ? [...prev.slice(prev.length - 500), entry] : [...prev, entry]));
+    const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
+    const out = `${prefix} ${new Date(entry.ts).toLocaleTimeString()} ${msg}`;
+    if (level === 'error') console.error(out);
+    else if (level === 'warn') console.warn(out);
+    else console.log(out);
+  };
+
+  // Persistência de credenciais do Gestor/Painel
+  try {
+    const saved = localStorage.getItem('gestorCreds');
+    if (saved && typeof saved === 'string' && saved.length > 0) {
+      const obj = JSON.parse(saved);
+      if (obj && typeof obj === 'object') {
+        if (obj.loginGestor && !loginGestor) setLoginGestor(obj.loginGestor);
+        if (obj.senhaGestor && !senhaGestor) setSenhaGestor(obj.senhaGestor);
+        if (obj.loginPainel && !loginPainel) setLoginPainel(obj.loginPainel);
+        if (obj.senhaPainel && !senhaPainel) setSenhaPainel(obj.senhaPainel);
+      }
+    }
+  } catch {}
+
+  const saveGestorCreds = () => {
+    const obj = { loginGestor, senhaGestor, loginPainel, senhaPainel };
+    localStorage.setItem('gestorCreds', JSON.stringify(obj));
+    alert('✅ Credenciais salvas localmente.');
+  };
+
+  const clearGestorCreds = () => {
+    localStorage.removeItem('gestorCreds');
+    setLoginGestor(''); setSenhaGestor(''); setLoginPainel(''); setSenhaPainel('');
+    alert('🗑️ Credenciais removidas.');
+  };
+
+  const callGestorWebhook = async (telefone: string): Promise<string | null> => {
+    const proxyCandidates = [
+      'http://127.0.0.1:8080/gestor/link-pagamento',
+      'http://127.0.0.1:8081/gestor/link-pagamento',
+    ];
+    const headers = { 'Content-Type': 'application/json' } as Record<string, string>;
+    const body = {
+      telefone,
+      loginGestor,
+      senhaGestor,
+      loginPainel,
+      SenhaPainel: senhaPainel,
+    } as any;
+    const maskString = (s: string) => s.length <= 4 ? '****' : `${s.slice(0,2)}****${s.slice(-2)}`;
+    const maskSecrets = (obj: any) => {
+      try {
+        const copy = JSON.parse(JSON.stringify(obj));
+        if (!exibirSegredos) {
+          if (copy.senhaGestor) copy.senhaGestor = maskString(String(copy.senhaGestor));
+          if (copy.SenhaPainel) copy.SenhaPainel = maskString(String(copy.SenhaPainel));
+        }
+        return copy;
+      } catch { return obj; }
+    };
+
+    // Sempre logar a requisição preparada, mesmo em modo demo
+    // Tentativa em múltiplas portas para evitar conflito na 8080
+    let lastError: any = null;
+    for (const proxyUrl of proxyCandidates) {
+      logScan(`REQ → POST ${proxyUrl}`);
+    logScan(`REQ Headers: ${JSON.stringify(headers)}`);
+    logScan(`REQ Body: ${JSON.stringify(exibirSegredos ? body : maskSecrets(body))}`);
+
+    // Se em modo demo ou faltando credenciais, não chama rede
+    const hasCreds = !!(loginGestor && senhaGestor && loginPainel && senhaPainel);
+    if (demoMode || !hasCreds) {
+      logScan(`(demo/sem credenciais) requisição não enviada para ${telefone}`, 'warn');
+      return null;
+    }
+    try {
+      const t0 = performance.now();
+      const r = await fetch(proxyUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+      const t1 = performance.now();
+      const took = Math.round(t1 - t0);
+      const ct = r.headers.get('content-type') || '';
+      logScan(`RESP HTTP ${r.status} content-type=${ct} (${took}ms)`);
+      if (!r.ok) {
+        const tx = await r.text();
+        logScan(`RESP Body [erro]: ${tx.slice(0, 2000)}`, 'warn');
+        lastError = { status: r.status, body: tx };
+        // tentar próximo candidato (ex.: 8081) se 404 ou 5xx
+        if (r.status === 404 || (r.status >= 500 && r.status <= 599)) {
+          logScan(`Tentando próxima porta do proxy...`);
+          continue;
+        }
+        return null;
+      }
+      // Ler texto bruto para log e tentar parsear
+      const rawText = await r.text();
+      logScan(`RESP Body: ${rawText.slice(0, 2000)}`);
+      let j: any = null;
+      try {
+        j = ct.toLowerCase().includes('application/json') ? JSON.parse(rawText) : { body: rawText };
+      } catch (e: any) {
+        logScan(`Falha ao parsear JSON da resposta: ${e?.message || e}`, 'warn');
+      }
+      const tryKeys = ['Link_pagamento','link_pagamento','LinkPagamento','payment_link','url_pagamento','url','link'];
+      let foundKey = '';
+      let link: string | null = null;
+      if (j && typeof j === 'object') {
+        for (const k of tryKeys) {
+          const v = j[k];
+          if (typeof v === 'string' && v.trim().length > 0) { link = v.trim(); foundKey = k; break; }
+        }
+        // tentar campos aninhados comuns
+        if (!link) {
+          const nested = j?.data || j?.result || j?.payload || j?.response;
+          if (nested && typeof nested === 'object') {
+            for (const k of tryKeys) {
+              const v = nested[k];
+              if (typeof v === 'string' && v.trim().length > 0) { link = v.trim(); foundKey = `nested.${k}`; break; }
+            }
+          }
+        }
+      }
+      if (link) logScan(`Link extraído (${foundKey}): ${link}`);
+      else logScan(`Nenhum link encontrado na resposta. Amostra: ${JSON.stringify(j).slice(0, 500)}`, 'warn');
+      return link;
+    } catch (err: any) {
+      logScan(`Falha de rede ao chamar proxy: ${err?.message || err}`, 'error');
+      lastError = err;
+      // tenta próximo candidato
+      continue;
+    }
+    }
+    if (lastError) {
+      logScan(`Todas as tentativas de proxy falharam: ${typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError)}`, 'error');
+    }
+    return null;
+  };
+
+  // Buscar link para um telefone
+  const handleBuscarLinkUnico = async () => {
+    if (demoMode) {
+      setGestorStatus('⚠ Modo demonstração: não busca link real.');
+      setGestorLink(null);
+      return;
+    }
+    if (!loginGestor || !senhaGestor) {
+      alert('❌ Informe usuário e senha do Gestor.');
+      return;
+    }
+    if (!loginPainel || !senhaPainel) {
+      alert('❌ Informe usuário e senha do Painel.');
+      return;
+    }
+    if (!gestorPhone.trim()) {
+      alert('❌ Informe um telefone (formato 55 + DDD + número).');
+      return;
+    }
+    const valid = validateBrazilianPhone(gestorPhone);
+    if (!valid.valid) { alert(`❌ Telefone inválido: ${valid.error}`); return; }
+    setGestorLoading(true); setGestorStatus('Procesando...'); setGestorLink(null);
+    try {
+      const link = await callGestorWebhook(valid.formatted);
+      setGestorLink(link);
+      setGestorStatus(link ? 'Link encontrado' : 'Sem link para este usuário');
+    } catch (e: any) {
+      setGestorStatus(`Erro: ${e.message}`);
+    } finally {
+      setGestorLoading(false);
+    }
+  };
+
+  // Verificar links para todos os clientes e montar relatório
+  const handleScanTodosLinks = async () => {
+    // Detectar base truncada por cache antigo: avisa e cancela varredura
+    const totalEsperado = (data.clientesAtivos || 0) + (data.clientesExpirados || 0);
+    const totalDisponivel = allClients.length;
+    if (totalDisponivel < totalEsperado) {
+      alert('⚠ A base carregada parece incompleta (vindo do cache antigo). Clique em "Limpar cache" e reenvie o Excel para varrer todos os clientes.');
+      return;
+    }
+    if (scanInProgress) {
+      console.warn('Varredura já em andamento. Ignorando novo comando.');
+      return;
+    }
+    const hasCreds = !!(loginGestor && senhaGestor && loginPainel && senhaPainel);
+    const effectiveDemo = demoMode || !hasCreds;
+    if (effectiveDemo) {
+      console.log('🧪 Verificação em Modo Demo: sem chamadas de rede.');
+    }
+    const phones: string[] = [];
+    // Usar filteredClients em vez de allClients para respeitar os filtros ativos
+    const clientsToScan = filter === 'sem-link' ? allClients : filteredClients;
+    clientsToScan.forEach(client => {
+      const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
+      if (raw) {
+        const with55 = raw.startsWith('55') ? raw : `55${raw}`;
+        phones.push(with55);
+      }
+    });
+    const uniquePhones = Array.from(new Set(phones));
+    if (uniquePhones.length === 0) {
+      alert('❌ Nenhum telefone encontrado na seleção atual.');
+      return;
+    }
+    setLinksMapa({}); setScanProgress(0); setClientesSemLink(new Set()); setScanLogs([]);
+    setTotalParaPesquisar(uniquePhones.length);
+    setProcessados(0);
+    logScan(`Iniciando varredura. Filtro='${filter}', total únicos=${uniquePhones.length}, demo=${effectiveDemo}`);
+    const mapa: Record<string, string> = {};
+    const semLink = new Set<string>();
+    setScanInProgress(true);
+    try {
+      for (let i = 0; i < uniquePhones.length; i++) {
+        const ph = uniquePhones[i];
+        logScan(`Processando (${i+1}/${uniquePhones.length}) ${ph}`);
+        if (!effectiveDemo) {
+          try {
+            const link = await callGestorWebhook(ph);
+            if (link) {
+              mapa[ph] = link;
+              setLinksMapa(prev => ({ ...prev, [ph]: link }));
+              logScan(`✓ Link encontrado para ${ph}`);
+            } else {
+              semLink.add(ph);
+              setClientesSemLink(prev => {
+                const next = new Set(prev);
+                next.add(ph);
+                return next;
+              });
+              logScan(`– Sem link para ${ph}`, 'warn');
+            }
+          } catch {
+            semLink.add(ph);
+            setClientesSemLink(prev => {
+              const next = new Set(prev);
+              next.add(ph);
+              return next;
+            });
+            logScan(`Erro ao processar ${ph}`, 'error');
+          }
+        } else {
+          // Modo demo: não chama webhook, apenas marca como sem link
+          semLink.add(ph);
+          setClientesSemLink(prev => {
+            const next = new Set(prev);
+            next.add(ph);
+            return next;
+          });
+          // Logar o corpo que seria enviado
+          const demoBody = {
+            telefone: ph,
+            loginGestor,
+            senhaGestor,
+            loginPainel,
+            SenhaPainel: senhaPainel,
+          };
+          logScan(`(demo) marcado sem link: ${ph}`);
+          logScan(`(demo) REQ Body: ${JSON.stringify(exibirSegredos ? demoBody : { ...demoBody, senhaGestor: demoBody.senhaGestor ? '****' : '', SenhaPainel: demoBody.SenhaPainel ? '****' : '' })}`);
+        }
+        setProcessados(i + 1);
+        setScanProgress(((i + 1) / uniquePhones.length) * 100);
+        // Garantir processamento "um por vez" com pausa controlada
+        await new Promise(r => setTimeout(r, 750));
+      }
+    } finally {
+      setScanInProgress(false);
+    }
+    setLinksMapa(mapa);
+    setClientesSemLink(semLink);
+    logScan(`Concluído. Com link=${Object.keys(mapa).length} | Sem link=${semLink.size}`);
+    alert(`✔ Varredura concluída. ${Object.keys(mapa).length} com link, ${semLink.size} sem link.`);
+  };
+
+  const exportLinksMapa = () => {
+    const rows = Object.entries(linksMapa).map(([phone, link]) => ({ Telefone: phone, Link: link }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'LinksGestor');
+    XLSX.writeFile(wb, `LinksGestor_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // (removido) Varredura Teste (10)
+
   const allClients = [
     ...(data.rawData?.ativos || []).map(c => ({ ...c, status: 'Ativo' })),
     ...(data.rawData?.expirados || []).map(c => ({ ...c, status: 'Expirado' })),
   ];
 
   const filteredClients = allClients.filter(client => {
+    const clientPhone = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
+    const phoneKey = clientPhone.startsWith('55') ? clientPhone : `55${clientPhone}`;
+    
     const matchesFilter = 
       filter === 'all' ||
       (filter === 'active' && client.status === 'Ativo') ||
-      (filter === 'expired' && client.status === 'Expirado');
+      (filter === 'expired' && client.status === 'Expirado') ||
+      (filter === 'sem-link' && clientesSemLink.has(phoneKey));
     
     const matchesSearch = !searchTerm ||
       (client.Usuario || client.usuario || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,13 +442,19 @@ export function ClientsView({ data }: Props) {
       filename = 'Clientes_Vencidos';
     }
 
-    const exportData = clientsToExport.map(client => ({
-      'Telefone/Usuário': client.Usuario || client.usuario || '-',
-      'Email': client.Email || client.email || '-',
-      'Data Início': formatDate(parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao)),
-      'Data Vencimento': formatDate(parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao)),
-      'Status': client.status,
-    }));
+    const exportData = clientsToExport.map(client => {
+      const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
+      const phoneKey = raw.startsWith('55') ? raw : (raw ? `55${raw}` : '');
+      const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
+      return {
+        'Telefone/Usuário': client.Usuario || client.usuario || '-',
+        'Email': client.Email || client.email || '-',
+        'Data Início': formatDate(parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao)),
+        'Data Vencimento': formatDate(parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao)),
+        'Status': client.status,
+        'Link': linkValue || '-'
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -559,6 +874,12 @@ export function ClientsView({ data }: Props) {
       icon: Clock,
       description: 'Evolução temporal'
     },
+    {
+      id: 'gestor' as ViewSection,
+      label: 'Link Gestor',
+      icon: Link,
+      description: 'Gerar/validar links de pagamento'
+    },
   ];
 
   return (
@@ -575,7 +896,7 @@ export function ClientsView({ data }: Props) {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-slate-400 text-sm mb-1">Total de Clientes</p>
-              <p className="text-white text-2xl">{allClients.length.toLocaleString('pt-BR')}</p>
+              <p className="text-white text-2xl">{((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')}</p>
             </div>
             <div 
               className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -752,6 +1073,17 @@ export function ClientsView({ data }: Props) {
                   borderColor: COLORS.border
                 }}
               >
+                {/* Ações rápidas */}
+                <div className="flex items-center justify-between mb-3">
+                  <div />
+                  <Button
+                    size="sm"
+                    onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel para carregar todos os clientes.'); }}
+                    style={{ backgroundColor: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textoSecundario }}
+                  >
+                    Limpar cache de dados
+                  </Button>
+                </div>
                 {/* Filtros */}
                 <div className="flex flex-col lg:flex-row gap-4 mb-6">
                   <div className="flex gap-2 flex-wrap">
@@ -765,7 +1097,7 @@ export function ClientsView({ data }: Props) {
                       }}
                     >
                       <Filter className="w-4 h-4 mr-2" />
-                      Todos ({allClients.length})
+                      Todos ({((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')})
                     </Button>
                     <Button
                       onClick={() => { setFilter('active'); setCurrentPage(1); }}
@@ -788,6 +1120,18 @@ export function ClientsView({ data }: Props) {
                       }}
                     >
                       Vencidos ({data.clientesExpirados})
+                    </Button>
+                    <Button
+                      onClick={() => { setFilter('sem-link'); setCurrentPage(1); }}
+                      size="sm"
+                      style={{
+                        backgroundColor: filter === 'sem-link' ? COLORS.amarelo : 'transparent',
+                        color: filter === 'sem-link' ? 'white' : COLORS.textoSecundario,
+                        border: `1px solid ${filter === 'sem-link' ? COLORS.amarelo : COLORS.border}`,
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Sem Link ({clientesSemLink.size})
                     </Button>
                   </div>
                   
@@ -862,12 +1206,16 @@ export function ClientsView({ data }: Props) {
                         <TableHead className="text-slate-400">Data Início</TableHead>
                         <TableHead className="text-slate-400">Data Vencimento</TableHead>
                         <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-slate-400">Link</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {currentClients.map((client, index) => {
                         const criadoEm = parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao);
                         const expiraEm = parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao);
+                        const clientPhoneRaw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
+                        const phoneKey = clientPhoneRaw.startsWith('55') ? clientPhoneRaw : (clientPhoneRaw ? `55${clientPhoneRaw}` : '');
+                        const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
                         
                         return (
                           <TableRow 
@@ -898,6 +1246,15 @@ export function ClientsView({ data }: Props) {
                               >
                                 {client.status}
                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-slate-300 break-all">
+                              {linkValue ? (
+                                <a href={linkValue} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>
+                                  {linkValue}
+                                </a>
+                              ) : (
+                                '-'
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -979,6 +1336,237 @@ export function ClientsView({ data }: Props) {
                     <Search className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                     <p className="text-slate-400">Nenhum cliente encontrado</p>
                     <p className="text-slate-500 text-sm">Tente ajustar os filtros ou a busca</p>
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {/* Seção: Link Gestor */}
+          {activeSection === 'gestor' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-white flex items-center gap-2">
+                  <Link className="w-5 h-5" style={{ color: COLORS.ativo }} />
+                  <span>Link Gestor</span>
+                </h2>
+                <p className="text-slate-500 text-sm mt-1">
+                  💡 Informe suas credenciais do Gestor e do Painel, salve e gere/verifique links de pagamento.
+                </p>
+              </div>
+
+              <Card className="p-6 border" style={{ backgroundColor: COLORS.cardBg, borderColor: COLORS.border }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Credenciais do Gestor</h3>
+                    <Input placeholder="Usuário do Gestor" value={loginGestor} onChange={e=>setLoginGestor(e.target.value)}
+                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
+                    <Input placeholder="Senha do Gestor" type="password" value={senhaGestor} onChange={e=>setSenhaGestor(e.target.value)}
+                      className="mt-2" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Credenciais do Painel</h3>
+                    <Input placeholder="Usuário do Painel" value={loginPainel} onChange={e=>setLoginPainel(e.target.value)}
+                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
+                    <Input placeholder="Senha do Painel" type="password" value={senhaPainel} onChange={e=>setSenhaPainel(e.target.value)}
+                      className="mt-2" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <Button onClick={saveGestorCreds} size="sm" style={{ backgroundColor: COLORS.verde, color: 'white' }}>Salvar Login</Button>
+                  <Button onClick={clearGestorCreds} size="sm" variant="outline"
+                    style={{ backgroundColor: 'transparent', borderColor: COLORS.border, color: COLORS.textoSecundario }}>Limpar</Button>
+                </div>
+
+                <Separator className="my-6" style={{ borderColor: COLORS.border }} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  <div>
+                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Busca rápida de link</h3>
+                    <Input placeholder="Telefone (55 + DDD + número)" value={gestorPhone} onChange={e=>setGestorPhone(e.target.value)}
+                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
+                    <p className="text-[11px] mt-1" style={{ color: COLORS.textoTerciario }}>Dica: copie de um cliente na lista.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleBuscarLinkUnico} size="sm" style={{ backgroundColor: COLORS.azul, color: 'white' }} disabled={gestorLoading}>
+                      {gestorLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link className="w-4 h-4 mr-2" />} Buscar Link
+                    </Button>
+                    {gestorLink && (
+                      <a href={gestorLink} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: COLORS.ativo }}>Abrir link</a>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 text-sm" style={{ color: gestorLink ? COLORS.ativo : COLORS.textoTerciario }}>
+                  {gestorStatus}
+                  {gestorLink && (
+                    <div className="mt-1 break-all" style={{ color: COLORS.textoPrimario }}>Link: {gestorLink}</div>
+                  )}
+                </div>
+
+                <Separator className="my-6" style={{ borderColor: COLORS.border }} />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white text-sm mb-1" style={{ fontWeight: 600 }}>Ver todos com link</h3>
+                    <p className="text-slate-500 text-xs">Varre sua base e marca quem possui link; exporte a lista.</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input type="checkbox" id="demo-mode" checked={demoMode} onChange={(e)=>setDemoMode(e.target.checked)} />
+                      <label htmlFor="demo-mode" className="text-xs" style={{ color: COLORS.textoTerciario }}>
+                        Modo Demo (não chama webhook)
+                      </label>
+                    </div>
+                    {/* Filtros compactos diretamente na seção do Gestor */}
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      <Button
+                        onClick={() => { setFilter('all'); setCurrentPage(1); }}
+                        size="sm"
+                        style={{
+                          backgroundColor: filter === 'all' ? `${COLORS.roxo}` : 'transparent',
+                          color: filter === 'all' ? 'white' : COLORS.textoSecundario,
+                          border: `1px solid ${filter === 'all' ? COLORS.roxo : COLORS.border}`,
+                        }}
+                      >
+                        Todos ({((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')})
+                      </Button>
+                      <Button
+                        onClick={() => { setFilter('active'); setCurrentPage(1); }}
+                        size="sm"
+                        style={{
+                          backgroundColor: filter === 'active' ? COLORS.verde : 'transparent',
+                          color: filter === 'active' ? 'white' : COLORS.textoSecundario,
+                          border: `1px solid ${filter === 'active' ? COLORS.verde : COLORS.border}`,
+                        }}
+                      >
+                        Ativos ({data.clientesAtivos})
+                      </Button>
+                      <Button
+                        onClick={() => { setFilter('expired'); setCurrentPage(1); }}
+                        size="sm"
+                        style={{
+                          backgroundColor: filter === 'expired' ? COLORS.vermelho : 'transparent',
+                          color: filter === 'expired' ? 'white' : COLORS.textoSecundario,
+                          border: `1px solid ${filter === 'expired' ? COLORS.vermelho : COLORS.border}`,
+                        }}
+                      >
+                        Vencidos ({data.clientesExpirados})
+                      </Button>
+                      <Button
+                        onClick={() => { setFilter('sem-link'); setCurrentPage(1); }}
+                        size="sm"
+                        style={{
+                          backgroundColor: filter === 'sem-link' ? COLORS.amarelo : 'transparent',
+                          color: filter === 'sem-link' ? 'white' : COLORS.textoSecundario,
+                          border: `1px solid ${filter === 'sem-link' ? COLORS.amarelo : COLORS.border}`,
+                        }}
+                      >
+                        Sem Link ({clientesSemLink.size})
+                      </Button>
+                    </div>
+                    <div className="mt-2 text-xs" style={{ color: COLORS.textoTerciario }}>
+                      Selecionados para varredura: {filter === 'sem-link' ? clientesSemLink.size : filteredClients.length}
+                    </div>
+                    {/* Prévia dos clientes na seleção (até 10) */}
+                    <div className="mt-3 overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
+                            <TableHead className="text-slate-400">Telefone/Usuário</TableHead>
+                            <TableHead className="text-slate-400">Email</TableHead>
+                            <TableHead className="text-slate-400">Status</TableHead>
+                            <TableHead className="text-slate-400">Link</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredClients.slice(0, 10).map((client, idx) => {
+                            const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
+                            const phoneKey = raw.startsWith('55') ? raw : (raw ? `55${raw}` : '');
+                            const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
+                            return (
+                              <TableRow key={idx} className="border-b hover:bg-slate-800/30" style={{ borderColor: COLORS.border }}>
+                                <TableCell className="text-white">{client.Usuario || client.usuario || '-'}</TableCell>
+                                <TableCell className="text-slate-300">{client.Email || client.email || '-'}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline"
+                                    style={{
+                                      backgroundColor: client.status === 'Ativo' ? `${COLORS.ativo}15` : `${COLORS.inativo}15`,
+                                      borderColor: client.status === 'Ativo' ? `${COLORS.ativo}50` : `${COLORS.inativo}50`,
+                                      color: client.status === 'Ativo' ? COLORS.ativo : COLORS.inativo
+                                    }}
+                                  >
+                                    {client.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-slate-300 break-all">
+                                  {linkValue ? (
+                                    <a href={linkValue} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>
+                                      {linkValue}
+                                    </a>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                  <div className="flex gap-2" style={{ position: 'relative', zIndex: 999, pointerEvents: 'auto' }}>
+                    <Button onClick={handleScanTodosLinks} disabled={scanInProgress} size="sm" style={{ backgroundColor: COLORS.roxo, color: 'white', opacity: scanInProgress ? 0.7 : 1 }}>
+                      {scanInProgress ? 'Verificando...' : 'Verificar Base'}
+                    </Button>
+                    <Button onClick={exportLinksMapa} size="sm" variant="outline"
+                      style={{ backgroundColor: 'transparent', borderColor: COLORS.border, color: COLORS.textoSecundario }}>
+                      <Download className="w-4 h-4 mr-2" /> Exportar Links
+                    </Button>
+                  </div>
+                </div>
+                <Progress value={scanProgress} className="mt-3" />
+                <div className="mt-2 text-xs" style={{ color: COLORS.textoTerciario }}>
+                  Total a pesquisar: {totalParaPesquisar} | Processados: {processados} | Com link: {Object.keys(linksMapa).length} | Sem link: {clientesSemLink.size}
+                </div>
+                <div className="mt-3 p-3 rounded-lg text-xs" style={{ backgroundColor: COLORS.cardBg, border: `1px solid ${COLORS.border}` }}>
+                  <div className="mb-2 flex items-center justify-between" style={{ color: COLORS.textoSecundario }}>
+                    <div>Logs da varredura</div>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={exibirSegredos} onChange={e=>setExibirSegredos(e.target.checked)} />
+                      <span style={{ color: COLORS.textoTerciario }}>Mostrar segredos nos logs</span>
+                    </label>
+                  </div>
+                  <div style={{ maxHeight: 180, overflowY: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace', color: COLORS.textoTerciario }}>
+                    {scanLogs.length === 0 ? (
+                      <div style={{ color: COLORS.textoTerciario }}>Sem logs ainda.</div>
+                    ) : (
+                      scanLogs.slice(-200).map((l, idx) => (
+                        <div key={idx} style={{ whiteSpace: 'pre-wrap', color: l.level === 'error' ? '#ef4444' : l.level === 'warn' ? '#f59e0b' : COLORS.textoTerciario }}>
+                          {new Date(l.ts).toLocaleTimeString()} - {l.msg}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {Object.keys(linksMapa).length > 0 && (
+                  <div className="mt-4 overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
+                          <TableHead className="text-slate-400">Telefone</TableHead>
+                          <TableHead className="text-slate-400">Link</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(linksMapa).map(([ph, ln]) => (
+                          <TableRow key={ph} className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
+                            <TableCell className="text-white">{ph}</TableCell>
+                            <TableCell className="text-white break-all"><a href={ln} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>{ln}</a></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </Card>

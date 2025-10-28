@@ -176,8 +176,9 @@ export default function App() {
             testes: processedData.rawData.testes.slice(0, 100),
             conversoes: processedData.rawData.conversoes.slice(0, 100),
             renovacoes: processedData.rawData.renovacoes.slice(0, 100),
-            ativos: processedData.rawData.ativos.slice(0, 500), // Mais clientes para visualização
-            expirados: processedData.rawData.expirados.slice(0, 500),
+            // Salvar listas completas de ativos/expirados para manter contagens e varreduras corretas
+            ativos: processedData.rawData.ativos,
+            expirados: processedData.rawData.expirados,
             jogos: processedData.rawData.jogos.slice(0, 50),
             convJogos: processedData.rawData.convJogos.slice(0, 50),
           },
