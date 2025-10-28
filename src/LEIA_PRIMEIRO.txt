@@ -1,0 +1,221 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║          📊 IPTV ANALYTICS DASHBOARD - VERSÃO 2.0            ║
+║                                                               ║
+║          Dashboard Profissional para Gestão de IPTV          ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🎉 PARABÉNS! Você baixou o projeto completo!
+
+═══════════════════════════════════════════════════════════════
+
+📋 INÍCIO RÁPIDO (3 PASSOS):
+
+1. Instalar dependências:
+   ➜ npm install
+
+2. Executar localmente:
+   ➜ npm run dev
+
+3. Abrir no navegador:
+   ➜ http://localhost:5173
+
+═══════════════════════════════════════════════════════════════
+
+📚 DOCUMENTAÇÃO DISPONÍVEL:
+
+📘 INDICE.md           - Índice completo de toda documentação
+⚡ QUICKSTART.md       - Guia de 5 minutos para começar
+📖 README.md           - Documentação completa do projeto
+🚀 DEPLOY.md           - Como fazer deploy no GitHub Pages
+✅ CHECKLIST.md        - Checklist de deploy passo a passo
+💻 COMANDOS.md         - Todos os comandos úteis
+📥 COMO_BAIXAR.md      - Como baixar o projeto
+
+═══════════════════════════════════════════════════════════════
+
+🎯 RECOMENDADO - Leia nesta ordem:
+
+1. INDICE.md           (visão geral de tudo)
+2. QUICKSTART.md       (configure em 5 minutos)
+3. README.md           (entenda o projeto)
+4. DEPLOY.md           (coloque online)
+
+═══════════════════════════════════════════════════════════════
+
+⚙️ PRÉ-REQUISITOS:
+
+✓ Node.js 18 ou superior
+✓ npm ou yarn
+✓ Git (para deploy)
+
+Verificar instalação:
+➜ node --version
+➜ npm --version
+➜ git --version
+
+═══════════════════════════════════════════════════════════════
+
+🚀 SCRIPTS AUTOMÁTICOS:
+
+Windows:
+➜ setup.bat
+
+Mac/Linux:
+➜ chmod +x setup.sh
+➜ ./setup.sh
+
+═══════════════════════════════════════════════════════════════
+
+📂 ESTRUTURA DO PROJETO:
+
+iptv-dashboard/
+├── 📄 Configuração
+│   ├── package.json         (dependências)
+│   ├── vite.config.ts       (build)
+│   ├── tsconfig.json        (typescript)
+│   └── index.html           (entrada)
+│
+├── 📘 Documentação
+│   ├── README.md
+│   ├── DEPLOY.md
+│   ├── QUICKSTART.md
+│   └── ... (10+ arquivos)
+│
+├── 🎨 Código
+│   ├── App.tsx              (componente principal)
+│   ├── components/          (todos os componentes)
+│   ├── styles/              (estilos globais)
+│   └── utils/               (lógica de negócio)
+│
+└── 🔧 Scripts
+    ├── setup.sh
+    └── setup.bat
+
+═══════════════════════════════════════════════════════════════
+
+🎯 FUNCIONALIDADES:
+
+✓ Processamento automático de Excel
+✓ 8 views especializadas (Overview, Financeiro, Clientes...)
+✓ Análise de impacto de jogos de futebol
+✓ Cálculos avançados (MRR, ARR, LTV, CAC, Churn)
+✓ Gráficos interativos
+✓ Exportação para Excel
+✓ Busca e filtros dinâmicos
+✓ Tema dark moderno
+✓ Totalmente responsivo
+
+═══════════════════════════════════════════════════════════════
+
+🌐 FAZER DEPLOY NO GITHUB PAGES:
+
+1. Crie repositório no GitHub
+2. Edite vite.config.ts (altere o 'base')
+3. Execute: npm run deploy
+4. Ative GitHub Pages nas configurações
+5. Pronto! Seu site estará online
+
+Ver DEPLOY.md para instruções detalhadas.
+
+═══════════════════════════════════════════════════════════════
+
+🐛 PROBLEMAS COMUNS:
+
+❌ "npm não é reconhecido"
+   → Instale Node.js em: https://nodejs.org/
+
+❌ Erro ao instalar
+   → Tente: npm install --legacy-peer-deps
+
+❌ Página em branco após deploy
+   → Verifique o 'base' no vite.config.ts
+
+❌ Porta 5173 ocupada
+   → Use: npm run dev -- --port 3000
+
+═══════════════════════════════════════════════════════════════
+
+📊 COMO USAR:
+
+1. Prepare seu arquivo Excel com as abas:
+   - Testes
+   - Conversões
+   - Renovações
+   - Clientes Ativos
+   - Clientes Expirados
+   - Jogos (opcional)
+   - Conv x Jogos (opcional)
+
+2. Clique em "Importar Excel" no dashboard
+
+3. Navegue pelas 8 views:
+   ✓ Overview (visão geral)
+   ✓ Financeiro (MRR, ARR, LTV...)
+   ✓ Clientes (busca e lista)
+   ✓ Retenção (churn, fidelidade)
+   ✓ Conversão (taxa, funil)
+   ✓ Jogos (impacto de jogos)
+   ✓ Geografia (estados, cidades)
+   ✓ Tráfego (origem, ROI)
+
+═══════════════════════════════════════════════════════════════
+
+🎨 PERSONALIZAÇÃO:
+
+- Alterar cores: styles/globals.css
+- Customizar logo: components/Logo.tsx
+- Adicionar campos: utils/dataProcessing.ts
+
+═══════════════════════════════════════════════════════════════
+
+📧 SUPORTE:
+
+1. Leia a documentação (INDICE.md)
+2. Consulte COMANDOS.md para comandos
+3. Verifique DEPLOY.md para problemas de deploy
+4. Abra issue no GitHub
+
+═══════════════════════════════════════════════════════════════
+
+🏆 TECNOLOGIAS:
+
+- React 18 + TypeScript
+- Vite 5 (build ultra-rápido)
+- Tailwind CSS 4.0
+- Recharts (gráficos)
+- ShadcN UI (componentes)
+- XLSX (processamento Excel)
+
+═══════════════════════════════════════════════════════════════
+
+📝 LICENÇA:
+
+Código aberto - MIT License
+Livre para uso pessoal e comercial
+
+═══════════════════════════════════════════════════════════════
+
+✅ PRÓXIMOS PASSOS:
+
+1. [ ] npm install
+2. [ ] npm run dev
+3. [ ] Ler QUICKSTART.md
+4. [ ] Testar com seu Excel
+5. [ ] Ler DEPLOY.md
+6. [ ] Fazer deploy
+7. [ ] Compartilhar com equipe
+
+═══════════════════════════════════════════════════════════════
+
+          ⭐ Se este projeto foi útil, dê uma estrela!
+                    Desenvolvido com ❤️
+
+═══════════════════════════════════════════════════════════════
+
+Versão: 2.0
+Data: Outubro 2025
+Autor: Dashboard IPTV Team
+
+═══════════════════════════════════════════════════════════════

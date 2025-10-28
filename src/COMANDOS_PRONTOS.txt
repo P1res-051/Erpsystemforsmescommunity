@@ -1,0 +1,295 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║          📋 COMANDOS PRONTOS - COPIE E COLE NO TERMINAL       ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+⚠️ IMPORTANTE: Substitua SEU-USUARIO e SEU-REPOSITORIO antes de executar!
+
+═══════════════════════════════════════════════════════════════
+
+📦 OPÇÃO 1: SETUP COMPLETO (Recomendado)
+
+═══════════════════════════════════════════════════════════════
+
+Windows:
+--------
+preparar-github.bat
+
+
+Mac/Linux:
+----------
+chmod +x preparar-github.sh
+./preparar-github.sh
+
+
+Este script fará tudo automaticamente! 🎉
+
+═══════════════════════════════════════════════════════════════
+
+📦 OPÇÃO 2: COMANDOS MANUAIS
+
+═══════════════════════════════════════════════════════════════
+
+1️⃣ Configurar Git (primeira vez):
+----------------------------------
+
+git config --global user.name "Seu Nome Aqui"
+git config --global user.email "seu@email.com"
+
+
+2️⃣ Inicializar e fazer primeiro commit:
+-----------------------------------------
+
+git init
+git add .
+git commit -m "🎉 Initial commit - IPTV Dashboard v2.0"
+
+
+3️⃣ Conectar ao GitHub:
+-----------------------
+
+⚠️ ATENÇÃO: Altere SEU-USUARIO e SEU-REPOSITORIO abaixo!
+
+git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
+git branch -M main
+git push -u origin main
+
+
+4️⃣ Instalar dependências:
+---------------------------
+
+npm install
+
+
+5️⃣ Fazer deploy para GitHub Pages:
+------------------------------------
+
+npm run deploy
+
+
+═══════════════════════════════════════════════════════════════
+
+🔄 ATUALIZAÇÕES FUTURAS
+
+═══════════════════════════════════════════════════════════════
+
+Depois que o projeto já está no GitHub, para fazer atualizações:
+
+git add .
+git commit -m "✨ Descrição da sua alteração"
+git push origin main
+npm run deploy
+
+
+═══════════════════════════════════════════════════════════════
+
+🎯 APENAS DEPLOY (projeto já no GitHub)
+
+═══════════════════════════════════════════════════════════════
+
+npm install
+npm run build
+npm run deploy
+
+
+═══════════════════════════════════════════════════════════════
+
+🔧 COMANDOS ÚTEIS
+
+═══════════════════════════════════════════════════════════════
+
+Testar localmente:
+------------------
+npm run dev
+
+
+Ver status do Git:
+------------------
+git status
+
+
+Ver commits:
+------------
+git log --oneline
+
+
+Verificar remote:
+-----------------
+git remote -v
+
+
+Ver branches:
+-------------
+git branch -a
+
+
+Desfazer último commit (mantém alterações):
+-------------------------------------------
+git reset --soft HEAD~1
+
+
+Limpar e reinstalar:
+--------------------
+rm -rf node_modules package-lock.json
+npm install
+
+
+═══════════════════════════════════════════════════════════════
+
+🌐 ATIVAR GITHUB PAGES (no site do GitHub)
+
+═══════════════════════════════════════════════════════════════
+
+1. Vá em: https://github.com/SEU-USUARIO/SEU-REPOSITORIO/settings/pages
+
+2. Em "Source", selecione: gh-pages
+
+3. Clique em "Save"
+
+4. Aguarde 2-5 minutos
+
+5. Acesse: https://SEU-USUARIO.github.io/SEU-REPOSITORIO/
+
+
+═══════════════════════════════════════════════════════════════
+
+🔐 CRIAR PERSONAL ACCESS TOKEN (se pedir senha)
+
+═══════════════════════════════════════════════════════════════
+
+1. Vá em: https://github.com/settings/tokens
+
+2. Click em "Generate new token" → "Generate new token (classic)"
+
+3. Marque: ☑️ repo (todas as opções)
+
+4. Click em "Generate token"
+
+5. COPIE O TOKEN (não será mostrado novamente!)
+
+6. Use o token como SENHA ao fazer git push
+
+
+═══════════════════════════════════════════════════════════════
+
+📱 COMANDOS POR SISTEMA OPERACIONAL
+
+═══════════════════════════════════════════════════════════════
+
+Windows (PowerShell):
+--------------------
+# Ver conteúdo de arquivo
+Get-Content vite.config.ts
+
+# Editar arquivo
+notepad vite.config.ts
+
+# Deletar pasta
+Remove-Item -Recurse -Force node_modules
+
+
+Mac/Linux (Terminal):
+--------------------
+# Ver conteúdo de arquivo
+cat vite.config.ts
+
+# Editar arquivo
+nano vite.config.ts
+# ou
+vim vite.config.ts
+
+# Deletar pasta
+rm -rf node_modules
+
+
+═══════════════════════════════════════════════════════════════
+
+✅ CHECKLIST RÁPIDO
+
+═══════════════════════════════════════════════════════════════
+
+Antes de fazer push:
+--------------------
+☐ Editei vite.config.ts com o nome correto do repositório
+☐ Executei: git add .
+☐ Executei: git commit -m "Initial commit"
+☐ Configurei remote com meu usuário e repositório corretos
+☐ Executei: git push -u origin main
+
+
+Depois do push:
+---------------
+☐ Executei: npm install
+☐ Executei: npm run deploy
+☐ Ativei GitHub Pages nas configurações
+☐ Aguardei 5 minutos
+☐ Testei a URL: https://SEU-USUARIO.github.io/SEU-REPOSITORIO/
+
+
+═══════════════════════════════════════════════════════════════
+
+🆘 SOLUÇÃO RÁPIDA DE PROBLEMAS
+
+═══════════════════════════════════════════════════════════════
+
+❌ Erro: "git: command not found"
+Solução: Instale o Git em https://git-scm.com/
+
+
+❌ Erro: "npm: command not found"
+Solução: Instale o Node.js em https://nodejs.org/
+
+
+❌ Erro: "Authentication failed"
+Solução: Use Personal Access Token como senha
+
+
+❌ Erro: "Permission denied"
+Solução:
+chmod +x setup.sh
+./setup.sh
+
+
+❌ Página em branco após deploy
+Solução: Verifique o base no vite.config.ts
+
+
+❌ Erro ao fazer npm install
+Solução:
+npm install --legacy-peer-deps
+
+
+═══════════════════════════════════════════════════════════════
+
+📚 LINKS ÚTEIS
+
+═══════════════════════════════════════════════════════════════
+
+Git:                    https://git-scm.com/
+Node.js:                https://nodejs.org/
+GitHub:                 https://github.com/
+Personal Tokens:        https://github.com/settings/tokens
+GitHub Pages Docs:      https://docs.github.com/en/pages
+
+
+═══════════════════════════════════════════════════════════════
+
+📖 DOCUMENTAÇÃO COMPLETA
+
+═══════════════════════════════════════════════════════════════
+
+Leia estes arquivos para mais detalhes:
+
+• ENVIAR_PARA_GITHUB.md  (guia completo)
+• DEPLOY.md              (deploy detalhado)
+• QUICKSTART.md          (início rápido)
+• COMANDOS.md            (todos os comandos)
+• CHECKLIST.md           (checklist completo)
+
+
+═══════════════════════════════════════════════════════════════
+
+                       Boa sorte! 🚀
+
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutonomyX Dash - Dashboard</title>
+    <link rel="icon" href="web/static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="web/static/css/style.css">
+    <link rel="stylesheet" href="web/static/css/animations.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="web/static/img/logo.png" alt="AutonomyX Logo" class="logo">
+                    <h1>AutonomyX Dash Exporter</h1>
+                </div>
+                <div class="user-section">
+                    <span id="username" class="username">Usuário</span>
+                    <button id="logout-btn" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="dashboard-nav">
+            <button class="nav-tab active" data-tab="overview">
+                <i class="fas fa-chart-line"></i> Overview
+            </button>
+            <button class="nav-tab" data-tab="financial">
+                <i class="fas fa-dollar-sign"></i> Financeiro
+            </button>
+            <button class="nav-tab" data-tab="clients">
+                <i class="fas fa-users"></i> Clientes
+            </button>
+            <button class="nav-tab" data-tab="geographic">
+                <i class="fas fa-map"></i> Geográfico
+            </button>
+            <button class="nav-tab" data-tab="settings">
+                <i class="fas fa-cog"></i> Configurações
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="dashboard-content">
+            <!-- Overview Tab -->
+            <section id="overview" class="tab-content active">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-users"></i></div>
+                        <div class="kpi-info">
+                            <h3>Total de Clientes</h3>
+                            <p class="kpi-value" id="total-clients">0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="kpi-info">
+                            <h3>Clientes Ativos</h3>
+                            <p class="kpi-value" id="active-clients">0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+                        <div class="kpi-info">
+                            <h3>Clientes Expirados</h3>
+                            <p class="kpi-value" id="expired-clients">0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-percent"></i></div>
+                        <div class="kpi-info">
+                            <h3>Taxa de Churn</h3>
+                            <p class="kpi-value" id="churn-rate">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Distribuição de Status</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Top 10 Estados</h3>
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Distribuição de Conexões</h3>
+                        <canvas id="connectionChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Tendência Diária (30 dias)</h3>
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3>Clientes Recentes</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Data de Criação</th>
+                                <th>Data de Expiração</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-clients-table">
+                            <tr><td colspan="4">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Financial Tab -->
+            <section id="financial" class="tab-content">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="kpi-info">
+                            <h3>MRR (Receita Mensal)</h3>
+                            <p class="kpi-value" id="mrr">R$ 0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-chart-bar"></i></div>
+                        <div class="kpi-info">
+                            <h3>ARR (Receita Anual)</h3>
+                            <p class="kpi-value" id="arr">R$ 0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-user-tie"></i></div>
+                        <div class="kpi-info">
+                            <h3>Receita por Cliente</h3>
+                            <p class="kpi-value" id="arpu">R$ 30</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="kpi-info">
+                            <h3>LTV (Lifetime Value)</h3>
+                            <p class="kpi-value" id="ltv">R$ 180</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Impacto de Churn</h3>
+                        <canvas id="churnImpactChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Clients Tab -->
+            <section id="clients" class="tab-content">
+                <div class="filter-section">
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                    <button class="filter-btn" data-filter="active">Ativos</button>
+                    <button class="filter-btn" data-filter="expired">Expirados</button>
+                    <button class="filter-btn" data-filter="trials">Testes</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Criação</th>
+                                <th>Expiração</th>
+                                <th>Conexões</th>
+                                <th>Estado</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table">
+                            <tr><td colspan="8">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Geographic Tab -->
+            <section id="geographic" class="tab-content">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-globe"></i></div>
+                        <div class="kpi-info">
+                            <h3>Estados Cobertos</h3>
+                            <p class="kpi-value" id="states-covered">0</p>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon"><i class="fas fa-percentage"></i></div>
+                        <div class="kpi-info">
+                            <h3>Cobertura Nacional</h3>
+                            <p class="kpi-value" id="coverage-percentage">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3>Distribuição por Estado</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th>Quantidade</th>
+                                <th>Percentual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="states-table">
+                            <tr><td colspan="3">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Tab -->
+            <section id="settings" class="tab-content">
+                <div class="settings-container">
+                    <h2>Configurações</h2>
+                    
+                    <div class="settings-section">
+                        <h3>Sincronização de Dados</h3>
+                        <p>Última sincronização: <span id="last-sync">Nunca</span></p>
+                        <button id="sync-btn" class="btn-primary">
+                            <i class="fas fa-sync"></i> Sincronizar Agora
+                        </button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Exportar Dados</h3>
+                        <div class="export-buttons">
+                            <button class="btn-export" data-format="xlsx">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </button>
+                            <button class="btn-export" data-format="csv">
+                                <i class="fas fa-file-csv"></i> CSV
+                            </button>
+                            <button class="btn-export" data-format="json">
+                                <i class="fas fa-file-code"></i> JSON
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Perfil</h3>
+                        <div class="profile-info">
+                            <p><strong>ID Matriz:</strong> <span id="profile-id-matriz">-</span></p>
+                            <p><strong>Revenda:</strong> <span id="profile-revenda">-</span></p>
+                            <p><strong>Cadastro:</strong> <span id="profile-created">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Carregando...</p>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="web/static/js/app.js"></script>
+    <script src="web/static/js/charts.js"></script>
+</body>
+</html>
