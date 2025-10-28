@@ -22,8 +22,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: alecmoura10
+          password: dckr_pat_acgao594uJV9r1ux5MXPUWqQ9LQ
 
       - name: Compute short commit SHA
         id: vars
