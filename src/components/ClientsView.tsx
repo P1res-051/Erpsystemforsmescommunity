@@ -407,6 +407,10 @@ export function ClientsView({ data }: Props) {
     ...(data.rawData?.expirados || []).map(c => ({ ...c, status: 'Expirado' })),
   ];
 
+  // Banner persistente: detectar base truncada (cache antigo com apenas 500+500)
+  const expectedTotal = (data.clientesAtivos || 0) + (data.clientesExpirados || 0);
+  const isTruncated = allClients.length > 0 && allClients.length < expectedTotal;
+
   const filteredClients = allClients.filter(client => {
     const clientPhone = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
     const phoneKey = clientPhone.startsWith('55') ? clientPhone : `55${clientPhone}`;
@@ -1064,6 +1068,22 @@ export function ClientsView({ data }: Props) {
                 <p className="text-slate-500 text-sm mt-1">
                   💡 Visualize, filtre e exporte seus clientes facilmente
                 </p>
+                {isTruncated && (
+                  <div className="mt-3 p-3 rounded-lg border text-xs" style={{ backgroundColor: `${COLORS.amarelo}10`, borderColor: `${COLORS.amarelo}40` }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span style={{ color: COLORS.amarelo }}>
+                        ⚠ A base carregada parece incompleta. Limpe o cache e reenvie o Excel para varrer todos os clientes.
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel.'); }}
+                        style={{ backgroundColor: COLORS.amarelo, color: 'black' }}
+                      >
+                        Limpar cache
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Card 
@@ -1466,6 +1486,22 @@ export function ClientsView({ data }: Props) {
                     <div className="mt-2 text-xs" style={{ color: COLORS.textoTerciario }}>
                       Selecionados para varredura: {filter === 'sem-link' ? clientesSemLink.size : filteredClients.length}
                     </div>
+                    {isTruncated && (
+                      <div className="mt-2 p-3 rounded-lg border text-xs" style={{ backgroundColor: `${COLORS.amarelo}10`, borderColor: `${COLORS.amarelo}40` }}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span style={{ color: COLORS.amarelo }}>
+                            ⚠ A base atual está truncada ({allClients.length.toLocaleString('pt-BR')} de {expectedTotal.toLocaleString('pt-BR')}). Limpe o cache e reenvie o Excel.
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel.'); }}
+                            style={{ backgroundColor: COLORS.amarelo, color: 'black' }}
+                          >
+                            Limpar cache
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {/* Prévia dos clientes na seleção (até 10) */}
                     <div className="mt-3 overflow-x-auto">
                       <Table>
