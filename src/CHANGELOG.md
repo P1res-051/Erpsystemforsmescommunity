@@ -1,5 +1,40 @@
 # Changelog - Dashboard IPTV Analytics
 
+## ✅ Versão 2.1 - Integração de API de Jogos e Refatoração de Código (Novembro 2025)
+
+### 🎯 Principais Melhorias
+
+#### 1. **Integração API de Jogos (UOL)**
+- Adicionado backend em Python (`JOGOS.PY`) com Flask para servir dados de jogos em tempo real.
+- `GamesView.tsx` agora consome a nova API local (`http://localhost:5000`), exibindo jogos em destaque e outros jogos do dia.
+- Incluído indicador de status da API (Conectada/Offline) na interface.
+- Criados scripts (`start-jogos-api.bat`, `start-jogos-api.sh`) para facilitar a inicialização.
+
+#### 2. **Proxy do BotConversa Aprimorado**
+- Revisado e validado o proxy FastAPI (`botconversa_proxy.py`) para comunicação com a API do BotConversa.
+- Assegurada a funcionalidade dos modos simulado e real.
+
+#### 3. **Correções de TypeScript e Build**
+- Corrigidos múltiplos erros de tipo (TS7006, TS18047, TS2322, TS2367) em `QuickBilling.tsx`, `QuickInvoice.tsx`, `ClientsView.tsx`, `App.tsx`, e `FinancialView.tsx`.
+- Normalizadas as importações em todos os componentes da UI (`src/components/ui/*.tsx`) para remover sufixos de versão, melhorando a manutenibilidade.
+
+### 🔧 Melhorias Técnicas
+
+#### Validação e Qualidade de Código
+- Executados `npm run typecheck` e `npm run build` com sucesso, garantindo um código livre de erros de tipo e pronto para produção.
+- Adicionada e atualizada a documentação sobre as novas funcionalidades de backend (`INTEGRACAO_JOGOS_UOL.md`, `PROXY_SETUP.md`).
+
+### 📊 Componentes Atualizados
+- `GamesView.tsx`
+- `ClientsView.tsx`
+- `App.tsx`
+- `QuickBilling.tsx`
+- `QuickInvoice.tsx`
+- `FinancialView.tsx`
+- Todos os componentes em `src/components/ui/`
+
+---
+
 ## ✅ Versão 2.0 - Sistema de Cálculo Inteligente (Outubro 2025)
 
 ### 🎯 Principais Melhorias

@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Cart
 import { DashboardData } from '../App';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
-import { parseDate, formatDate } from '../utils/dataProcessing';
+import { parseDate, formatDate, getRowDate } from '../utils/dataProcessing';
 import { useState, useEffect } from 'react';
 
 interface Props {
@@ -18,7 +18,7 @@ function calcularRenovacoesUltimaSemana(data: DashboardData): number {
   const umaSemanaAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
   
   return data.rawData.renovacoes.filter((ren: any) => {
-    const dataRen = parseDate(ren.Data || ren.data || ren.Criado_Em || ren.criado_em);
+    const dataRen = getRowDate(ren, 'data') || getRowDate(ren, 'criado');
     return dataRen && dataRen >= umaSemanaAtras && dataRen <= hoje;
   }).length;
 }
@@ -28,7 +28,7 @@ function calcularRenovacoesProximaSemana(data: DashboardData): number {
   const umaSemanaNaFrente = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
   
   return data.rawData.ativos.filter((ativo: any) => {
-    const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em || ativo.Expiracao || ativo.expiracao);
+    const expiraEm = getRowDate(ativo, 'expira');
     return expiraEm && expiraEm >= hoje && expiraEm <= umaSemanaNaFrente;
   }).length;
 }
@@ -38,7 +38,8 @@ function calcularRenovacoesProximas2Semanas(data: DashboardData): number {
   const duasSemanasNaFrente = new Date(hoje.getTime() + 14 * 24 * 60 * 60 * 1000);
   
   return data.rawData.ativos.filter((ativo: any) => {
-    const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em || ativo.Expiracao || ativo.expiracao);
+    const expiraEn = getRowDate(ativo, 'expira');
+    const expiraEm = expiraEn;
     return expiraEm && expiraEm >= hoje && expiraEm <= duasSemanasNaFrente;
   }).length;
 }

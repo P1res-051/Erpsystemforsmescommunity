@@ -88,7 +88,7 @@ const COLORS = {
   fundo: '#0B0F1A',
 };
 
-type ViewSection = 'detalhamento' | 'historico-ganhos' | 'desempenho-comercial' | 'trafego-custos' | 'retencao-perdas' | 'oportunidades' | 'receita-acoes' | 'relatorios';
+type ViewSection = 'detalhamento' | 'historico-ganhos' | 'desempenho-comercial' | 'trafego-custos' | 'retencao-perdas' | 'oportunidades' | 'receita-acoes' | 'relatorios' | 'estado-atual';
 
 type PeriodoFiltro = '7d' | '30d' | '90d' | 'personalizado';
 

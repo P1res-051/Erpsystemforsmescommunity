@@ -24,7 +24,8 @@ import {
   sortByMesAno,
   mapCustoToPlano,
   extractHourFromDate,
-  daysDifference
+  daysDifference,
+  getRowDate
 } from './utils/dataProcessing';
 
 export interface DashboardData {
@@ -304,12 +305,18 @@ export default function App() {
         case 'clientes ativos':
           data.rawData.ativos = jsonData;
           data.clientesAtivos = jsonData.length;
-          data.clientesData = [...data.clientesData, ...jsonData.map(c => ({ ...c, status: 'Ativo' }))];
+          data.clientesData = [
+            ...data.clientesData,
+            ...jsonData.map(c => ({ ...(typeof c === 'object' && c ? c : {}), status: 'Ativo' }))
+          ];
           break;
         case 'clientes expirados':
           data.rawData.expirados = jsonData;
           data.clientesExpirados = jsonData.length;
-          data.clientesData = [...data.clientesData, ...jsonData.map(c => ({ ...c, status: 'Expirado' }))];
+          data.clientesData = [
+            ...data.clientesData,
+            ...jsonData.map(c => ({ ...(typeof c === 'object' && c ? c : {}), status: 'Expirado' }))
+          ];
           break;
         case 'jogos':
           data.rawData.jogos = jsonData;
@@ -329,8 +336,8 @@ export default function App() {
     // Clientes recentes
     data.recentClients = [...data.rawData.ativos, ...data.rawData.expirados]
       .sort((a, b) => {
-        const dateA = new Date(a.Criado_Em || a.Criacao || '').getTime();
-        const dateB = new Date(b.Criado_Em || b.Criacao || '').getTime();
+        const dateA = getRowDate(a, 'criado')?.getTime() || 0;
+        const dateB = getRowDate(b, 'criado')?.getTime() || 0;
         return dateB - dateA;
       })
       .slice(0, 10);
@@ -343,7 +350,7 @@ export default function App() {
     const turnoCount: Record<string, number> = {};
     
     data.forEach(row => {
-      const date = parseDate(row.Criado_Em || row.criado_em);
+      const date = getRowDate(row, 'criado');
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -362,7 +369,7 @@ export default function App() {
     const turnoCount: Record<string, number> = {};
     
     data.forEach(row => {
-      const date = parseDate(row.Data || row.data);
+      const date = getRowDate(row, 'log');
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -387,7 +394,7 @@ export default function App() {
         customerRenewals[usuario] = (customerRenewals[usuario] || 0) + 1;
       }
       
-      const date = parseDate(row.Data || row.data);
+      const date = getRowDate(row, 'data');
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -575,7 +582,7 @@ export default function App() {
       porPlano[planoInfo.nome].count++;
       porPlano[planoInfo.nome].receita += preco;
       
-      const date = parseDate(row.Data || row.data);
+      const date = getRowDate(row, 'data');
       // Filtrar apenas datas válidas e até o mês atual
       if (date && date <= hoje && date.getFullYear() >= hoje.getFullYear() - 1) {
         const mesAno = getMonthYear(date);
@@ -776,7 +783,7 @@ export default function App() {
     const dias = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
     
     data.rawData.conversoes.forEach(row => {
-      const date = parseDate(row.Data || row.data);
+      const date = getRowDate(row, 'log');
       if (date) {
         const dia = getDayOfWeek(date);
         const hora = date.getHours();
@@ -804,7 +811,7 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     
     // Resumo Geral
-    const resumo = [[
+    const resumo: (string | number)[][] = [[
       'Métrica', 'Valor'
     ], [
       'Total de Testes', dashboardData.testes
@@ -849,7 +856,7 @@ export default function App() {
 
     // Dados por Dia da Semana
     const weekdayOrder = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
-    const porDia = [['Dia da Semana', 'Testes', 'Conversões', 'Renovações']];
+    const porDia: (string | number)[][] = [['Dia da Semana', 'Testes', 'Conversões', 'Renovações']];
     weekdayOrder.forEach(day => {
       porDia.push([
         day,
@@ -863,7 +870,7 @@ export default function App() {
 
     // Top Times (se houver dados de jogos)
     if (dashboardData.hasGamesData && dashboardData.topTimes.length > 0) {
-      const topTimes = [['Ranking', 'Time', 'Conversões']];
+      const topTimes: (string | number)[][] = [['Ranking', 'Time', 'Conversões']];
       dashboardData.topTimes.forEach((time, index) => {
         topTimes.push([index + 1, time.time, time.conversoes]);
       });

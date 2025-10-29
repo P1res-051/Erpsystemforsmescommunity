@@ -103,6 +103,69 @@ export function safePct(numerator: number, denominator: number): number {
 }
 
 /**
+ * Constrói Date a partir de partes com offset explícito
+ */
+export function buildDateFromParts(dateStr?: string, timeStr?: string, offset: string = '-03:00'): Date | null {
+  try {
+    if (!dateStr) return null;
+    const time = timeStr && /\d{2}:\d{2}/.test(timeStr) ? timeStr : '00:00:00';
+    const iso = `${dateStr}T${time}${offset}`;
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Obtém Date de uma linha no novo formato (DATA/HORARIO, *_DT)
+ * type: 'criado' | 'expira' | 'log' | 'data'
+ */
+export function getRowDate(row: any, type: 'criado' | 'expira' | 'log' | 'data' = 'data'): Date | null {
+  if (!row) return null;
+
+  // Preferir campos canônicos *_DT
+  const dtCandidates: string[] = [];
+  if (type === 'criado') dtCandidates.push(row.CRIADO_DT, row.Criado_Em, row.Criado, row.criado_em, row.criado);
+  else if (type === 'expira') dtCandidates.push(row.EXPIRA_DT, row.Expira_Em, row.Expira, row.expira_em, row.expira);
+  else if (type === 'log') dtCandidates.push(row.LOG_DT, row.Data, row.data);
+  else dtCandidates.push(row.DT, row.Data, row.data);
+
+  for (const cand of dtCandidates) {
+    const d = parseDate(cand);
+    if (d) return d;
+  }
+
+  // Combinar DATA/HORARIO específicos
+  if (type === 'criado') {
+    const d = buildDateFromParts(row.CRIADO_DATA || row.DATA, row.CRIADO_HORARIO || row.HORARIO);
+    if (d) return d;
+  } else if (type === 'expira') {
+    const d = buildDateFromParts(row.EXPIRA_DATA || row.DATA, row.EXPIRA_HORARIO || row.HORARIO);
+    if (d) return d;
+  } else if (type === 'log') {
+    const d = buildDateFromParts(row.LOG_DATA || row.DATA, row.LOG_HORARIO || row.HORARIO);
+    if (d) return d;
+  } else {
+    const d = buildDateFromParts(row.DATA, row.HORARIO);
+    if (d) return d;
+  }
+
+  // Partes numéricas (ANO/MES/DIA/HORA/MINUTO) – fuso local do navegador
+  const ano = row.ANO ?? row.ano;
+  const mes = row.MES ?? row.mes;
+  const dia = row.DIA ?? row.dia;
+  const hora = row.HORA ?? row.hora ?? 0;
+  const min = row.MINUTO ?? row.minuto ?? 0;
+  if (ano && mes && dia) {
+    const d = new Date(ano, mes - 1, dia, hora, min);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
+/**
  * Parse de data para ISO-8601 no fuso America/Sao_Paulo
  */
 export function parseDate(dateStr: any): Date | null {
@@ -145,7 +208,7 @@ export function parseDate(dateStr: any): Date | null {
       if (isNaN(date.getTime()) || date.getFullYear() < 1970) return null;
       return date;
     }
-    
+
     // Fallback para Date.parse
     const parsed = new Date(str);
     if (isNaN(parsed.getTime()) || parsed.getFullYear() < 1970) return null;

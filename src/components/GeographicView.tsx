@@ -1,6 +1,9 @@
 import { Card } from './ui/card';
 import { MapPin, Map, Globe, TrendingUp, Users, Percent } from 'lucide-react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+} from 'recharts';
 import { DashboardData } from '../App';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
@@ -12,6 +15,14 @@ interface Props {
 const COLORS = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#ef4444', '#84cc16', '#a855f7', '#14b8a6', '#f97316'];
 
 export function GeographicView({ data }: Props) {
+  // Mapear UF → Macroregião para agregação
+  const UF_TO_REGION: Record<string, string> = {
+    AC: 'Norte', AL: 'Nordeste', AM: 'Norte', AP: 'Norte', BA: 'Nordeste', CE: 'Nordeste', DF: 'Centro-Oeste', ES: 'Sudeste',
+    GO: 'Centro-Oeste', MA: 'Nordeste', MG: 'Sudeste', MS: 'Centro-Oeste', MT: 'Centro-Oeste', PA: 'Norte', PB: 'Nordeste',
+    PE: 'Nordeste', PI: 'Nordeste', PR: 'Sul', RJ: 'Sudeste', RN: 'Nordeste', RO: 'Norte', RR: 'Norte', RS: 'Sul', SC: 'Sul',
+    SE: 'Nordeste', SP: 'Sudeste', TO: 'Norte'
+  };
+
   const geoMetrics = [
     {
       title: 'Estados Cobertos',
@@ -68,6 +79,42 @@ export function GeographicView({ data }: Props) {
     fill: COLORS[index % COLORS.length]
   }));
 
+  // Detalhes por estado para stacked bar (Ativos vs Expirados)
+  const porEstadoMap: Record<string, { ativos: number; expirados: number; testes: number; conversoes: number }> = {};
+  (data.porEstado || []).forEach(e => {
+    porEstadoMap[e.estado] = {
+      ativos: e.ativos || 0,
+      expirados: e.expirados || 0,
+      testes: e.testes || 0,
+      conversoes: e.conversoes || 0
+    };
+  });
+  const topEstadosDetalhados = topEstadosChart.map(e => ({
+    estado: e.estado,
+    total: e.total,
+    percentual: e.percentual,
+    ativos: porEstadoMap[e.estado]?.ativos || 0,
+    expirados: porEstadoMap[e.estado]?.expirados || 0,
+  }));
+
+  // Agregação por Macroregião
+  const regionTotals: Record<string, number> = { Norte: 0, Nordeste: 0, 'Centro-Oeste': 0, Sudeste: 0, Sul: 0 };
+  (data.porEstado || []).forEach(e => {
+    const reg = UF_TO_REGION[e.estado as keyof typeof UF_TO_REGION];
+    if (reg) {
+      regionTotals[reg] += (e.testes || 0) + (e.ativos || 0) + (e.expirados || 0);
+    }
+  });
+  const totalReg = Object.values(regionTotals).reduce((a, b) => a + b, 0) || 1;
+  const regionChartData = Object.entries(regionTotals).map(([reg, total]) => ({
+    regiao: reg,
+    total,
+    percentual: (total / totalReg) * 100
+  }));
+
+  const renderPieLabel = ({ estado, percentual }: { estado: string; percentual: number }) =>
+    `${estado}: ${percentual.toFixed(1)}%`;
+
   return (
     <div className="space-y-6">
       {/* Geographic Metrics */}
@@ -121,7 +168,7 @@ export function GeographicView({ data }: Props) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ estado, percentual }) => `${estado}: ${percentual.toFixed(1)}%`}
+                label={renderPieLabel}
                 outerRadius={120}
                 fill="#8884d8"
                 dataKey="percentual"
@@ -138,6 +185,35 @@ export function GeographicView({ data }: Props) {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      {/* Stacked: Ativos vs Expirados por Estado (Top 10) */}
+      <Card className="p-6 bg-slate-900 border-slate-800">
+        <h3 className="text-white mb-4">Ativos vs Expirados — Top 10 Estados</h3>
+        <ResponsiveContainer width="100%" height={360}>
+          <BarChart data={topEstadosDetalhados}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="estado" stroke="#94a3b8" />
+            <YAxis stroke="#94a3b8" />
+            <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff' }} />
+            <Legend />
+            <Bar dataKey="ativos" stackId="a" fill="#10b981" name="Ativos" radius={[4,4,0,0]} />
+            <Bar dataKey="expirados" stackId="a" fill="#ef4444" name="Expirados" radius={[4,4,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Radar por Macroregião */}
+      <Card className="p-6 bg-slate-900 border-slate-800">
+        <h3 className="text-white mb-4">Distribuição por Macroregião</h3>
+        <ResponsiveContainer width="100%" height={360}>
+          <RadarChart data={regionChartData}>
+            <PolarGrid stroke="#334155" />
+            <PolarAngleAxis dataKey="regiao" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+            <PolarRadiusAxis stroke="#94a3b8" angle={30} domain={[0, Math.max(...regionChartData.map(d => d.total)) || 1]} />
+            <Radar name="Total" dataKey="total" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.3} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </Card>
 
       {/* Detailed Table */}
       <Card className="p-6 bg-slate-900 border-slate-800">
@@ -197,20 +273,18 @@ export function GeographicView({ data }: Props) {
         </div>
       </Card>
 
-      {/* Top DDDs */}
+      {/* Top DDDs: gráfico de barras */}
       <Card className="p-6 bg-slate-900 border-slate-800">
         <h3 className="text-white mb-4">Top 10 DDDs Mais Ativos</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {(data.porDDD || []).slice(0, 10).map((item, index) => (
-            <div key={index} className="p-4 bg-slate-800 rounded-lg text-center">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-full mx-auto mb-2">
-                <MapPin className="w-6 h-6 text-purple-500" />
-              </div>
-              <p className="text-white text-xl mb-1">({item.ddd})</p>
-              <p className="text-slate-400 text-sm">{item.count.toLocaleString('pt-BR')} clientes</p>
-            </div>
-          ))}
-        </div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={(data.porDDD || []).slice(0, 10)}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="ddd" stroke="#94a3b8" tickFormatter={(v) => `(${v})`} />
+            <YAxis stroke="#94a3b8" />
+            <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff' }} />
+            <Bar dataKey="count" fill="#a855f7" radius={[4,4,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </Card>
 
       {/* Insights */}
@@ -270,3 +344,8 @@ export function GeographicView({ data }: Props) {
     </div>
   );
 }
+
+
+
+
+

@@ -1,0 +1,347 @@
+has_tz_hint = is_str.str.contains(r"(Z|\+|\-|UTC)", case=False, regex=True) { "Clientes Ativos": [ { "Usuario": 14996813915, "Senha": 88945196729, "Email": NaN, "Criado_Em": "2025-10-26 19:33:00", "Expira_Em": "2025-11-27 20:17:00", "Criado": "2025-10-26 19:33:00", "Expira": "2025-11-27 20:17:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": NaN, "Status": "Ativo", "DDD": 14.0, "UF": "SP", "DATA": "2025-10-26", "HORARIO": "19:33:00", "ANO": 2025, "MES": 10, "DIA": 26, "HORA": 19, "MINUTO": 33, "CRIADO_DATA": "2025-10-26", "CRIADO_HORARIO": "19:33:00", "CRIADO_ANO": 2025, "CRIADO_MES": 10, "CRIADO_DIA": 26, "CRIADO_HORA": 19, "CRIADO_MINUTO": 33, "CRIADO_DT": "2025-10-26 19:33:00", "EXPIRA_DATA": "2025-11-27", "EXPIRA_HORARIO": "20:17:00", "EXPIRA_ANO": 2025, "EXPIRA_MES": 11, "EXPIRA_DIA": 27, "EXPIRA_HORA": 20, "EXPIRA_MINUTO": 17, "EXPIRA_DT": "2025-11-27 20:17:00", "DT": "2025-10-26 19:33:00" }, { "Usuario": 97478393816, "Senha": 23491118146, "Email": NaN, "Criado_Em": "2025-10-24 20:15:00", "Expira_Em": "2025-11-25 02:15:00", "Criado": "2025-10-24 20:15:00", "Expira": "2025-11-25 02:15:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": NaN, "Status": "Ativo", "DDD": 97.0, "UF": "AM", "DATA": "2025-10-24", "HORARIO": "20:15:00", "ANO": 2025, "MES": 10, "DIA": 24, "HORA": 20, "MINUTO": 15, "CRIADO_DATA": "2025-10-24", "CRIADO_HORARIO": "20:15:00", "CRIADO_ANO": 2025, "CRIADO_MES": 10, "CRIADO_DIA": 24, "CRIADO_HORA": 20, "CRIADO_MINUTO": 15, "CRIADO_DT": "2025-10-24 20:15:00", "EXPIRA_DATA": "2025-11-25", "EXPIRA_HORARIO": "02:15:00", "EXPIRA_ANO": 2025, "EXPIRA_MES": 11, "EXPIRA_DIA": 25, "EXPIRA_HORA": 2, "EXPIRA_MINUTO": 15, "EXPIRA_DT": "2025-11-25 02:15:00", "DT": "2025-10-24 20:15:00" } ], "Clientes Expirados": [ { "Usuario": "89668453444", "Senha": "93465751573", "Email": NaN, "Criado_Em": "2025-09-28 10:09:00", "Expira_Em": "2025-10-28 11:09:00", "Criado": "2025-09-28 10:09:00", "Expira": "2025-10-28 11:09:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": "BotConversa | Via API", "Status": "Expirado", "DDD": 89.0, "UF": "PI", "DATA": "2025-09-28", "HORARIO": "10:09:00", "ANO": 2025, "MES": 9, "DIA": 28, "HORA": 10, "MINUTO": 9, "CRIADO_DATA": "2025-09-28", "CRIADO_HORARIO": "10:09:00", "CRIADO_ANO": 2025, "CRIADO_MES": 9, "CRIADO_DIA": 28, "CRIADO_HORA": 10, "CRIADO_MINUTO": 9, "CRIADO_DT": "2025-09-28 10:09:00", "EXPIRA_DATA": "2025-10-28", "EXPIRA_HORARIO": "11:09:00", "EXPIRA_ANO": 2025, "EXPIRA_MES": 10, "EXPIRA_DIA": 28, "EXPIRA_HORA": 11, "EXPIRA_MINUTO": 9, "EXPIRA_DT": "2025-10-28 11:09:00", "DT": "2025-09-28 10:09:00" }, { "Usuario": "5522997048487", "Senha": "12123224657", "Email": NaN, "Criado_Em": "2025-09-28 09:09:00", "Expira_Em": "2025-10-28 10:32:00", "Criado": "2025-09-28 09:09:00", "Expira": "2025-10-28 10:32:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": "BotConversa | Via API", "Status": "Expirado", "DDD": 22.0, "UF": "RJ", "DATA": "2025-09-28", "HORARIO": "09:09:00", "ANO": 2025, "MES": 9, "DIA": 28, "HORA": 9, "MINUTO": 9, "CRIADO_DATA": "2025-09-28", "CRIADO_HORARIO": "09:09:00", "CRIADO_ANO": 2025, "CRIADO_MES": 9, "CRIADO_DIA": 28, "CRIADO_HORA": 9, "CRIADO_MINUTO": 9, "CRIADO_DT": "2025-09-28 09:09:00", "EXPIRA_DATA": "2025-10-28", "EXPIRA_HORARIO": "10:32:00", "EXPIRA_ANO": 2025, "EXPIRA_MES": 10, "EXPIRA_DIA": 28, "EXPIRA_HORA": 10, "EXPIRA_MINUTO": 32, "EXPIRA_DT": "2025-10-28 10:32:00", "DT": "2025-09-28 09:09:00" } ], "Testes": [ { "Usuario": "93917192326", "Senha": "72764222742", "Email": NaN, "Criado_Em": "2025-10-26 18:44:00", "Expira_Em": "2025-10-26 19:44:00", "Criado": "2025-10-26 18:44:00", "Expira": "2025-10-26 19:44:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": NaN, "Status": "Expirado", "DDD": 93.0, "UF": "PA", "DATA": "2025-10-26", "HORARIO": "18:44:00", "ANO": 2025, "MES": 10, "DIA": 26, "HORA": 18, "MINUTO": 44, "CRIADO_DATA": "2025-10-26", "CRIADO_HORARIO": "18:44:00", "CRIADO_ANO": 2025, "CRIADO_MES": 10, "CRIADO_DIA": 26, "CRIADO_HORA": 18, "CRIADO_MINUTO": 44, "CRIADO_DT": "2025-10-26 18:44:00", "DT": "2025-10-26 18:44:00" }, { "Usuario": "4396501046", "Senha": "81187553163", "Email": NaN, "Criado_Em": "2025-10-26 17:56:00", "Expira_Em": "2025-10-26 19:56:00", "Criado": "2025-10-26 17:56:00", "Expira": "2025-10-26 19:56:00", "Revendedor": "revendamurilo", "Max_Conexoes": 1, "Notas": NaN, "Status": "Expirado", "DDD": 43.0, "UF": "PR", "DATA": "2025-10-26", "HORARIO": "17:56:00", "ANO": 2025, "MES": 10, "DIA": 26, "HORA": 17, "MINUTO": 56, "CRIADO_DATA": "2025-10-26", "CRIADO_HORARIO": "17:56:00", "CRIADO_ANO": 2025, "CRIADO_MES": 10, "CRIADO_DIA": 26, "CRIADO_HORA": 17, "CRIADO_MINUTO": 56, "CRIADO_DT": "2025-10-26 17:56:00", "DT": "2025-10-26 17:56:00" } ], "Conversões": [ { "Usuario": "14996813915", "Owner": "revendamurilo", "Tipo": "IPTV", "Acao": "Conversão", "Custo": 1, "Creditos_Apos": 474, "Data": "2025-10-27 20:17:00", "DDD": 14.0, "UF": "SP", "DATA": "2025-10-27", "HORARIO": "20:17:00", "ANO": 2025, "MES": 10, "DIA": 27, "HORA": 20, "MINUTO": 17, "LOG_DATA": "2025-10-27", "LOG_HORARIO": "20:17:00", "LOG_ANO": 2025, "LOG_MES": 10, "LOG_DIA": 27, "LOG_HORA": 20, "LOG_MINUTO": 17, "LOG_DT": "2025-10-27 20:17:00", "DT": "2025-10-27 20:17:00" }, { "Usuario": "97478393816", "Owner": "revendamurilo", "Tipo": "IPTV", "Acao": "Conversão", "Custo": 1, "Creditos_Apos": 211, "Data": "2025-10-24 20:16:00", "DDD": 97.0, "UF": "AM", "DATA": "2025-10-24", "HORARIO": "20:16:00", "ANO": 2025, "MES": 10, "DIA": 24, "HORA": 20, "MINUTO": 16, "LOG_DATA": "2025-10-24", "LOG_HORARIO": "20:16:00", "LOG_ANO": 2025, "LOG_MES": 10, "LOG_DIA": 24, "LOG_HORA": 20, "LOG_MINUTO": 16, "LOG_DT": "2025-10-24 20:16:00", "DT": "2025-10-24 20:16:00" } ], "Renovações": [ { "Usuario": "51346728196", "Owner": "revendamurilo", "Tipo": "IPTV", "Acao": "Cliente Renovado", "Custo": 1.0, "Creditos_Apos": 441, "Data": "2025-10-28 11:21:00", "DDD": NaN, "UF": NaN, "DATA": "2025-10-28", "HORARIO": "11:21:00", "ANO": 2025, "MES": 10, "DIA": 28, "HORA": 11, "MINUTO": 21, "LOG_DATA": "2025-10-28", "LOG_HORARIO": "11:21:00", "LOG_ANO": 2025, "LOG_MES": 10, "LOG_DIA": 28, "LOG_HORA": 11, "LOG_MINUTO": 21, "LOG_DT": "2025-10-28 11:21:00", "DT": "2025-10-28 11:21:00" }, { "Usuario": "99342295386", "Owner": "revendamurilo", "Tipo": "IPTV", "Acao": "Cliente Renovado", "Custo": 1.0, "Creditos_Apos": 442, "Data": "2025-10-28 11:02:00", "DDD": 99.0, "UF": "MA", "DATA": "2025-10-28", "HORARIO": "11:02:00", "ANO": 2025, "MES": 10, "DIA": 28, "HORA": 11, "MINUTO": 2, "LOG_DATA": "2025-10-28", "LOG_HORARIO": "11:02:00", "LOG_ANO": 2025, "LOG_MES": 10, "LOG_DIA": 28, "LOG_HORA": 11, "LOG_MINUTO": 2, "LOG_DT": "2025-10-28 11:02:00", "DT": "2025-10-28 11:02:00" } ] } Veja como é as tipagem de dados agora que vem no meu excel , para passar para meu front refazer todos os calculos , como poderiamos passar da melhor maneira para ter melhores calculos de datas e horarios crie um xml
+
+Use UTC ISO-8601 com offset, inclua epoch e mantenha o local original. Null em xsi:nil="true". Tipos fortes via XSD. Abaixo um XSD curto + XML de exemplo para seu front refazer cálculos sem ambiguidade.
+
+<!-- bestexport.xsd -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           targetNamespace="urn:bestexport:v1"
+           xmlns="urn:bestexport:v1"
+           elementFormDefault="qualified">
+
+  <!-- Enums e tipos básicos -->
+  <xs:simpleType name="UFType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z]{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ativo"/>
+      <xs:enumeration value="Expirado"/>
+      <xs:enumeration value="Conversão"/>
+      <xs:enumeration value="Cliente Renovado"/>
+      <xs:enumeration value="Teste"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PhoneIdType">
+    <!-- mantém zeros à esquerda; só dígitos -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{4,20}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Bloco de data/hora normalizado -->
+  <xs:complexType name="DateTimeBlock">
+    <xs:sequence>
+      <!-- ISO 8601 UTC com offset explícito (preferir 'Z') -->
+      <xs:element name="iso_utc" type="xs:dateTime"/>
+      <!-- Época em milissegundos para cálculos rápidos -->
+      <xs:element name="epoch_ms" type="xs:long"/>
+      <!-- Representação local original se existir -->
+      <xs:element name="iso_local" type="xs:string" minOccurs="0"/>
+      <!-- Offset original do dado de origem, ex: -03:00 -->
+      <xs:element name="offset" type="xs:string" minOccurs="0"/>
+      <!-- Indicador se a string de origem tinha pista de fuso -->
+      <xs:element name="has_tz_hint" type="xs:boolean"/>
+      <!-- Partes de data para agregações sem parsing no front -->
+      <xs:element name="parts">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="ano"   type="xs:int"/>
+            <xs:element name="mes"   type="xs:int"/>
+            <xs:element name="dia"   type="xs:int"/>
+            <xs:element name="hora"  type="xs:int"/>
+            <xs:element name="min"   type="xs:int"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Registro genérico de pessoa/assinatura -->
+  <xs:complexType name="PessoaRecord">
+    <xs:sequence>
+      <xs:element name="usuario" type="PhoneIdType"/>
+      <xs:element name="senha"   type="PhoneIdType"/>
+      <xs:element name="email"   type="xs:string" nillable="true"/>
+      <xs:element name="revendedor" type="xs:string"/>
+      <xs:element name="max_conexoes" type="xs:int"/>
+      <xs:element name="notas" type="xs:string" nillable="true"/>
+      <xs:element name="status" type="StatusType"/>
+      <xs:element name="ddd" type="xs:int" nillable="true"/>
+      <xs:element name="uf"  type="UFType" nillable="true"/>
+      <xs:element name="criado" type="DateTimeBlock"/>
+      <xs:element name="expira" type="DateTimeBlock" minOccurs="0"/>
+      <!-- Campo DT canônico para ordenações: replica criado.iso_utc -->
+      <xs:element name="dt" type="xs:dateTime"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Registro de log financeiro (Conversões/Renovações) -->
+  <xs:complexType name="FinanceRecord">
+    <xs:sequence>
+      <xs:element name="usuario" type="PhoneIdType"/>
+      <xs:element name="owner"   type="xs:string"/>
+      <xs:element name="tipo"    type="xs:string"/>
+      <xs:element name="acao"    type="StatusType"/>
+      <xs:element name="custo"   type="xs:decimal"/>
+      <xs:element name="creditos_apos" type="xs:int"/>
+      <xs:element name="ddd" type="xs:int" nillable="true"/>
+      <xs:element name="uf"  type="UFType" nillable="true"/>
+      <xs:element name="log" type="DateTimeBlock"/>
+      <xs:element name="dt" type="xs:dateTime"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Root -->
+  <xs:element name="BestExport">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="meta">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="timezone_source" type="xs:string"/>
+              <xs:element name="generated_at" type="xs:dateTime"/>
+              <xs:element name="locale" type="xs:string"/>
+              <xs:element name="currency" type="xs:string"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="clientes_ativos">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="cliente" type="PessoaRecord" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="clientes_expirados">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="cliente" type="PessoaRecord" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="testes">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="teste" type="PessoaRecord" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="conversoes">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="conversao" type="FinanceRecord" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="renovacoes">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="renovacao" type="FinanceRecord" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+
+
+Exemplo de XML já normalizado (recorte dos seus dados). Converta tudo para UTC e preencha epoch_ms. Se o valor original não tinha fuso, use America/Sao_Paulo como padrão e has_tz_hint=false.
+
+<!-- bestexport.xml -->
+<BestExport xmlns="urn:bestexport:v1"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <meta>
+    <timezone_source>America/Sao_Paulo</timezone_source>
+    <generated_at>2025-10-28T18:00:00Z</generated_at>
+    <locale>pt-BR</locale>
+    <currency>BRL</currency>
+  </meta>
+
+  <clientes_ativos>
+    <cliente>
+      <usuario>14996813915</usuario>
+      <senha>88945196729</senha>
+      <email xsi:nil="true"/>
+      <revendedor>revendamurilo</revendedor>
+      <max_conexoes>1</max_conexoes>
+      <notas xsi:nil="true"/>
+      <status>Ativo</status>
+      <ddd>14</ddd>
+      <uf>SP</uf>
+      <criado>
+        <iso_utc>2025-10-26T22:33:00Z</iso_utc>
+        <epoch_ms>1761517980000</epoch_ms>
+        <iso_local>2025-10-26 19:33:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>26</dia><hora>19</hora><min>33</min></parts>
+      </criado>
+      <expira>
+        <iso_utc>2025-11-27T23:17:00Z</iso_utc>
+        <epoch_ms>1764285420000</epoch_ms>
+        <iso_local>2025-11-27 20:17:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>11</mes><dia>27</dia><hora>20</hora><min>17</min></parts>
+      </expira>
+      <dt>2025-10-26T22:33:00Z</dt>
+    </cliente>
+
+    <cliente>
+      <usuario>97478393816</usuario>
+      <senha>23491118146</senha>
+      <email xsi:nil="true"/>
+      <revendedor>revendamurilo</revendedor>
+      <max_conexoes>1</max_conexoes>
+      <notas xsi:nil="true"/>
+      <status>Ativo</status>
+      <ddd>97</ddd>
+      <uf>AM</uf>
+      <criado>
+        <iso_utc>2025-10-24T23:15:00Z</iso_utc>
+        <epoch_ms>1761251700000</epoch_ms>
+        <iso_local>2025-10-24 20:15:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>24</dia><hora>20</hora><min>15</min></parts>
+      </criado>
+      <expira>
+        <iso_utc>2025-11-25T05:15:00Z</iso_utc>
+        <epoch_ms>1764066900000</epoch_ms>
+        <iso_local>2025-11-25 02:15:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>11</mes><dia>25</dia><hora>2</hora><min>15</min></parts>
+      </expira>
+      <dt>2025-10-24T23:15:00Z</dt>
+    </cliente>
+  </clientes_ativos>
+
+  <clientes_expirados>
+    <cliente>
+      <usuario>89668453444</usuario>
+      <senha>93465751573</senha>
+      <email xsi:nil="true"/>
+      <revendedor>revendamurilo</revendedor>
+      <max_conexoes>1</max_conexoes>
+      <notas>BotConversa | Via API</notas>
+      <status>Expirado</status>
+      <ddd>89</ddd>
+      <uf>PI</uf>
+      <criado>
+        <iso_utc>2025-09-28T13:09:00Z</iso_utc>
+        <epoch_ms>1759064940000</epoch_ms>
+        <iso_local>2025-09-28 10:09:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>9</mes><dia>28</dia><hora>10</hora><min>9</min></parts>
+      </criado>
+      <expira>
+        <iso_utc>2025-10-28T14:09:00Z</iso_utc>
+        <epoch_ms>1761641340000</epoch_ms>
+        <iso_local>2025-10-28 11:09:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>28</dia><hora>11</hora><min>9</min></parts>
+      </expira>
+      <dt>2025-09-28T13:09:00Z</dt>
+    </cliente>
+  </clientes_expirados>
+
+  <testes>
+    <teste>
+      <usuario>93917192326</usuario>
+      <senha>72764222742</senha>
+      <email xsi:nil="true"/>
+      <revendedor>revendamurilo</revendedor>
+      <max_conexoes>1</max_conexoes>
+      <notas xsi:nil="true"/>
+      <status>Teste</status>
+      <ddd>93</ddd>
+      <uf>PA</uf>
+      <criado>
+        <iso_utc>2025-10-26T21:44:00Z</iso_utc>
+        <epoch_ms>1761515040000</epoch_ms>
+        <iso_local>2025-10-26 18:44:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>26</dia><hora>18</hora><min>44</min></parts>
+      </criado>
+      <dt>2025-10-26T21:44:00Z</dt>
+    </teste>
+  </testes>
+
+  <conversoes>
+    <conversao>
+      <usuario>14996813915</usuario>
+      <owner>revendamurilo</owner>
+      <tipo>IPTV</tipo>
+      <acao>Conversão</acao>
+      <custo>1</custo>
+      <creditos_apos>474</creditos_apos>
+      <ddd>14</ddd>
+      <uf>SP</uf>
+      <log>
+        <iso_utc>2025-10-27T23:17:00Z</iso_utc>
+        <epoch_ms>1761607020000</epoch_ms>
+        <iso_local>2025-10-27 20:17:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>27</dia><hora>20</hora><min>17</min></parts>
+      </log>
+      <dt>2025-10-27T23:17:00Z</dt>
+    </conversao>
+  </conversoes>
+
+  <renovacoes>
+    <renovacao>
+      <usuario>51346728196</usuario>
+      <owner>revendamurilo</owner>
+      <tipo>IPTV</tipo>
+      <acao>Cliente Renovado</acao>
+      <custo>1.0</custo>
+      <creditos_apos>441</creditos_apos>
+      <ddd xsi:nil="true"/>
+      <uf xsi:nil="true"/>
+      <log>
+        <iso_utc>2025-10-28T14:21:00Z</iso_utc>
+        <epoch_ms>1761718860000</epoch_ms>
+        <iso_local>2025-10-28 11:21:00</iso_local>
+        <offset>-03:00</offset>
+        <has_tz_hint>false</has_tz_hint>
+        <parts><ano>2025</ano><mes>10</mes><dia>28</dia><hora>11</hora><min>21</min></parts>
+      </log>
+      <dt>2025-10-28T14:21:00Z</dt>
+    </renovacao>
+  </renovacoes>
+
+</BestExport>
+
+
+Regras de conversão que recomendo no seu ETL:
+
+Parse de entrada: se a string tem pista de fuso (Z|[+-]\d{2}:\d{2}|UTC) então use esse offset. Caso contrário aplique America/Sao_Paulo.
+
+Gere iso_utc com datetime.astimezone(timezone.utc) e strftime("%Y-%m-%dT%H:%M:%SZ").
+
+epoch_ms = int(iso_utc.timestamp() * 1000).
+
+Preencha parts a partir do horário local original quando existir, senão a partir de UTC.
+
+Campos vazios como Email, DDD, UF devem ir com xsi:nil="true".
+
+dt replica criado.iso_utc para pessoas e log.iso_utc para eventos financeiros, padronizando ordenação.
+
+Com isso, o front calcula tudo por epoch_ms ou iso_utc, faz agrupamentos por parts sem re-parse, e preserva o horário local exibido.

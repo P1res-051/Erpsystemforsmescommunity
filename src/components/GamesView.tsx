@@ -11,10 +11,97 @@ interface Props {
   data: DashboardData;
 }
 
+interface JogoLocal {
+  id: string;
+  time_casa: string;
+  time_fora: string;
+  horario: string;
+  campeonato: string;
+  status: string;
+  placar_casa?: string;
+  placar_fora?: string;
+  brasao_casa: string;
+  brasao_fora: string;
+  estadio: string;
+  canais: string;
+  is_big_game: boolean;
+  status_text: string;
+}
+
+interface JogosResponse {
+  success: boolean;
+  data: {
+    date: string;
+    total_games: number;
+    games: JogoLocal[];
+  };
+  error?: string;
+}
+
 export function GamesView({ data }: Props) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [isLoading, setIsLoading] = useState(false);
+  const [jogosLocais, setJogosLocais] = useState<JogoLocal[]>([]);
+  const [apiStatus, setApiStatus] = useState<'loading' | 'connected' | 'error'>('loading');
   const widgetsLoaded = useRef(false);
+  
+  // Função para buscar jogos da nossa API local
+  const fetchJogosLocais = async (date?: string) => {
+    try {
+      setIsLoading(true);
+      const dateParam = date || new Date().toISOString().slice(0, 10);
+      // Converter formato de data de YYYY-MM-DD para DD-MM-YYYY
+      const [year, month, day] = dateParam.split('-');
+      const dateFormatted = `${day}-${month}-${year}`;
+      
+      const response = await fetch(`http://localhost:5000/api/jogos?date=${dateFormatted}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: JogosResponse = await response.json();
+      
+      if (result.success) {
+        setJogosLocais(result.data.games);
+        setApiStatus('connected');
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar jogos locais:', error);
+      setApiStatus('error');
+      setJogosLocais([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Verificar status da API
+  const checkApiStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/status');
+      if (response.ok) {
+        setApiStatus('connected');
+        return true;
+      }
+    } catch (error) {
+      console.error('API local não disponível:', error);
+    }
+    setApiStatus('error');
+    return false;
+  };
+
+  // Carregar jogos quando o componente montar ou data mudar
+  useEffect(() => {
+    const loadData = async () => {
+      const apiAvailable = await checkApiStatus();
+      if (apiAvailable) {
+        await fetchJogosLocais(selectedDate);
+      }
+    };
+    loadData();
+  }, [selectedDate]);
   
   // Carregar o script do widget da API-Sports
   useEffect(() => {
@@ -36,6 +123,11 @@ export function GamesView({ data }: Props) {
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);
     setIsLoading(true);
+    
+    // Buscar jogos locais para a nova data
+    if (apiStatus === 'connected') {
+      fetchJogosLocais(newDate);
+    }
     
     // Atualizar todos os widgets de fixtures
     const widgetIds = ['wg-br-a', 'wg-br-b', 'wg-liberta', 'wg-sula'];
@@ -343,6 +435,172 @@ export function GamesView({ data }: Props) {
             <p className="text-orange-400 text-xs">conversões</p>
           </div>
         </div>
+      </Card>
+
+      {/* Jogos do Dia - API Local (UOL) */}
+      <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-xl">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-white">Jogos do Dia - Dados UOL</h3>
+            </div>
+            <p className="text-slate-400 text-sm">
+              Todos os jogos do futebol brasileiro e internacional
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`px-3 py-1 rounded-full text-xs ${
+              apiStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
+              apiStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+              'bg-yellow-500/20 text-yellow-400'
+            }`}>
+              {apiStatus === 'connected' ? '● API Conectada' :
+               apiStatus === 'error' ? '● API Offline' :
+               '● Carregando...'}
+            </div>
+            <Button
+              onClick={() => fetchJogosLocais(selectedDate)}
+              disabled={isLoading || apiStatus === 'error'}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Atualizar Jogos
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {apiStatus === 'error' && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <Trophy className="w-4 h-4" />
+              <span className="text-sm">
+                API local não disponível. Execute: <code className="bg-red-500/20 px-2 py-1 rounded">python JOGOS.PY --api</code>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {jogosLocais.length > 0 ? (
+          <div className="space-y-4">
+            {/* Jogos em Destaque */}
+            {jogosLocais.filter(jogo => jogo.is_big_game).length > 0 && (
+              <div>
+                <h4 className="text-white mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                  Jogos em Destaque
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {jogosLocais.filter(jogo => jogo.is_big_game).map((jogo) => (
+                    <div key={jogo.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {jogo.brasao_casa && (
+                            <img src={jogo.brasao_casa} alt={jogo.time_casa} className="w-6 h-6" />
+                          )}
+                          <span className="text-white font-medium">{jogo.time_casa}</span>
+                        </div>
+                        <div className="text-center">
+                          {jogo.status === '2' || jogo.status === '3' ? (
+                            <span className="text-white text-lg font-bold">
+                              {jogo.placar_casa} - {jogo.placar_fora}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">{jogo.horario}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{jogo.time_fora}</span>
+                          {jogo.brasao_fora && (
+                            <img src={jogo.brasao_fora} alt={jogo.time_fora} className="w-6 h-6" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-slate-400 space-y-1">
+                        <div>📺 {jogo.campeonato}</div>
+                        <div>🏟️ {jogo.estadio || 'Estádio não informado'}</div>
+                        <div>📡 {jogo.canais || 'Canais não informados'}</div>
+                        <div className={`inline-block px-2 py-1 rounded ${
+                          jogo.status === '2' ? 'bg-green-500/20 text-green-400' :
+                          jogo.status === '3' ? 'bg-gray-500/20 text-gray-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {jogo.status_text}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Outros Jogos */}
+            {jogosLocais.filter(jogo => !jogo.is_big_game).length > 0 && (
+              <div>
+                <h4 className="text-white mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  Outros Jogos ({jogosLocais.filter(jogo => !jogo.is_big_game).length})
+                </h4>
+                <div className="space-y-2">
+                  {jogosLocais.filter(jogo => !jogo.is_big_game).map((jogo) => (
+                    <div key={jogo.id} className="bg-slate-800/30 rounded-lg p-3 border border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-white text-sm">{jogo.time_casa}</span>
+                          <span className="text-slate-400 text-xs">vs</span>
+                          <span className="text-white text-sm">{jogo.time_fora}</span>
+                        </div>
+                        <div className="text-center mx-4">
+                          {jogo.status === '2' || jogo.status === '3' ? (
+                            <span className="text-white font-medium">
+                              {jogo.placar_casa} - {jogo.placar_fora}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-sm">{jogo.horario}</span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-slate-400">{jogo.campeonato}</div>
+                          <div className="text-xs text-slate-400">📡 {jogo.canais || 'Canais não informados'}</div>
+                          <div className={`text-xs px-2 py-1 rounded ${
+                            jogo.status === '2' ? 'bg-green-500/20 text-green-400' :
+                            jogo.status === '3' ? 'bg-gray-500/20 text-gray-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {jogo.status_text}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            {apiStatus === 'connected' ? (
+              <div className="text-slate-400">
+                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhum jogo encontrado para esta data</p>
+                <p className="text-xs mt-2">Tente selecionar outra data</p>
+              </div>
+            ) : (
+              <div className="text-slate-400">
+                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Conecte-se à API local para ver os jogos</p>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Widgets de Jogos da Semana - API-Football */}

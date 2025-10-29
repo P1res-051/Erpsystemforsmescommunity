@@ -14,7 +14,7 @@ import {
   ChevronRight, Send, AlertCircle, Check, X, Loader2, Tag, Calendar,
   Upload, Link
 } from 'lucide-react';
-import { parseDate, formatDate } from '../utils/dataProcessing';
+import { parseDate, formatDate, getRowDate } from '../utils/dataProcessing';
 import * as XLSX from 'xlsx';
 
 interface Props {
@@ -805,13 +805,10 @@ export function ClientsView({ data }: Props) {
     // Filtrar clientes expirados no período
     const expiredClients = allClients.filter(client => {
       if (client.status !== 'Expirado') return false;
-      
-      try {
-        const expirationDate = parseDate(client.vencimento);
-        return expirationDate >= cutoffDate && expirationDate <= now;
-      } catch {
-        return false;
-      }
+
+      const expirationDate = parseDate(client.vencimento);
+      if (!expirationDate) return false;
+      return expirationDate >= cutoffDate && expirationDate <= now;
     });
 
     if (expiredClients.length === 0) {
@@ -1231,8 +1228,8 @@ export function ClientsView({ data }: Props) {
                     </TableHeader>
                     <TableBody>
                       {currentClients.map((client, index) => {
-                        const criadoEm = parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao);
-                        const expiraEm = parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao);
+                        const criadoEm = getRowDate(client, 'criado');
+                        const expiraEm = getRowDate(client, 'expira');
                         const clientPhoneRaw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
                         const phoneKey = clientPhoneRaw.startsWith('55') ? clientPhoneRaw : (clientPhoneRaw ? `55${clientPhoneRaw}` : '');
                         const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
