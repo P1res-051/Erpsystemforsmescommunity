@@ -1,37 +1,121 @@
 # Changelog - Dashboard IPTV Analytics
 
-## ✅ Versão 2.1 - Integração de API de Jogos e Refatoração de Código (Novembro 2025)
+## ✅ Versão 2.1 - Análise Geográfica Avançada (Outubro 2025)
 
-### 🎯 Principais Melhorias
+### 🗺️ Nova Aba Geográfico - Completa Reformulação
 
-#### 1. **Integração API de Jogos (UOL)**
-- Adicionado backend em Python (`JOGOS.PY`) com Flask para servir dados de jogos em tempo real.
-- `GamesView.tsx` agora consome a nova API local (`http://localhost:5000`), exibindo jogos em destaque e outros jogos do dia.
-- Incluído indicador de status da API (Conectada/Offline) na interface.
-- Criados scripts (`start-jogos-api.bat`, `start-jogos-api.sh`) para facilitar a inicialização.
+#### 1. **Extração Inteligente de DDD**
+- Sistema robusto de extração de DDD de telefones
+- Suporta múltiplos formatos: com/sem +55, formatados, apenas números
+- Validação automática (DDDs entre 11-99)
+- 112 DDDs mapeados cobrindo todo o Brasil
 
-#### 2. **Proxy do BotConversa Aprimorado**
-- Revisado e validado o proxy FastAPI (`botconversa_proxy.py`) para comunicação com a API do BotConversa.
-- Assegurada a funcionalidade dos modos simulado e real.
+#### 2. **Mapeamento Completo DDD → UF → Região**
+```javascript
+DDD_MAP = {
+  '11': { uf: 'SP', regiao: 'SE' },  // Sudeste
+  '71': { uf: 'BA', regiao: 'NE' },  // Nordeste
+  '41': { uf: 'PR', regiao: 'S' },   // Sul
+  // ... 112 DDDs mapeados
+}
+```
 
-#### 3. **Correções de TypeScript e Build**
-- Corrigidos múltiplos erros de tipo (TS7006, TS18047, TS2322, TS2367) em `QuickBilling.tsx`, `QuickInvoice.tsx`, `ClientsView.tsx`, `App.tsx`, e `FinancialView.tsx`.
-- Normalizadas as importações em todos os componentes da UI (`src/components/ui/*.tsx`) para remover sufixos de versão, melhorando a manutenibilidade.
+#### 3. **KPIs Geográficos em Tempo Real**
+- Estados Cobertos (X/27)
+- Cobertura Nacional (%)
+- Estado Líder (maior base)
+- DDDs Ativos
+- Concentração Top-5 estados
 
-### 🔧 Melhorias Técnicas
+#### 4. **Métricas Avançadas por Estado**
+- Total de clientes
+- Clientes ativos vs expirados
+- **NOVO**: Vencem em 7 dias
+- **NOVO**: Vencem em 15 dias
+- **NOVO**: Vencidos nos últimos 30 dias
+- Clientes fiéis (2+ renovações)
+- Receita total e ticket médio
+- Churn rate por estado
+- DDDs ativos por estado
 
-#### Validação e Qualidade de Código
-- Executados `npm run typecheck` e `npm run build` com sucesso, garantindo um código livre de erros de tipo e pronto para produção.
-- Adicionada e atualizada a documentação sobre as novas funcionalidades de backend (`INTEGRACAO_JOGOS_UOL.md`, `PROXY_SETUP.md`).
+#### 5. **Agregação por Região**
+- 5 regiões brasileiras (Norte, Nordeste, Centro-Oeste, Sudeste, Sul)
+- Cores distintas por região:
+  - 🔴 Sudeste (Rosa)
+  - 🔵 Sul (Azul)
+  - 🟠 Nordeste (Laranja)
+  - 🟢 Norte (Verde)
+  - 🟣 Centro-Oeste (Roxo)
+- Métricas agregadas: receita, retenção, ativos, churn
 
-### 📊 Componentes Atualizados
-- `GamesView.tsx`
-- `ClientsView.tsx`
-- `App.tsx`
-- `QuickBilling.tsx`
-- `QuickInvoice.tsx`
-- `FinancialView.tsx`
-- Todos os componentes em `src/components/ui/`
+#### 6. **Insights Automáticos**
+Sistema de inteligência que gera insights como:
+- "SP concentra 22,4% da base total."
+- "BA tem 42 clientes vencendo em 7 dias."
+- "Nordeste apresenta crescimento de 8% na base ativa."
+
+#### 7. **Visualizações Avançadas**
+
+**Aba Mapa:**
+- Mapa interativo do Brasil (componente BrazilMap)
+- Estados coloridos por região
+- Intensidade baseada em número de clientes
+- Clique para ver detalhes do estado
+- Gráfico de pizza por região
+- Card de detalhes com métricas completas
+
+**Aba Gráficos:**
+- Top 10 Estados (barras horizontais)
+- Radar de Performance Regional (5 eixos)
+- Heatmap DDD × Status (Top 20 DDDs)
+- Barras de distribuição ativo/expirado
+
+**Aba Tabelas:**
+- Ranking completo por estado (27 UFs)
+- 10 colunas de métricas
+- Badges coloridos por status
+- Barra visual de distribuição
+- Tabela de telefones inválidos com diagnóstico
+
+#### 8. **Exportação Excel Multi-Abas**
+Exporta 4 abas em um único arquivo:
+1. **Ranking UF**: Métricas completas por estado
+2. **Por Região**: Agregação regional
+3. **DDDs**: Top DDDs com distribuição
+4. **Inválidos**: Telefones não processados + motivo
+
+#### 9. **Validação e Diagnóstico**
+- Lista de telefones inválidos
+- Motivo da falha (DDD inválido, formato incorreto)
+- Amostras visuais (primeiras 20)
+- Alertas visuais com sugestões
+
+#### 10. **Melhorias Técnicas**
+
+**Funções Utilitárias:**
+```typescript
+extractDDD(phone: string): string | null
+extractGeoFromPhone(phone: any): GeoData
+DDD_MAP: Record<string, {uf, regiao}>
+STATE_NAMES: Record<string, string>
+REGION_NAMES: Record<string, string>
+```
+
+**Performance:**
+- useMemo para cálculos pesados
+- Processamento otimizado de grandes volumes
+- Lazy loading de visualizações por tabs
+
+### 📝 Documentação
+
+- 📄 **NOVO**: [ANALISE_GEOGRAFICA.md](./ANALISE_GEOGRAFICA.md) - Guia completo
+
+### 🐛 Correções
+
+- Corrigido mapeamento DDD incompleto
+- Melhorada extração de DDD (suporta mais formatos)
+- Otimizada performance com grandes volumes de dados
+- Corrigidos cálculos de churn por estado
 
 ---
 

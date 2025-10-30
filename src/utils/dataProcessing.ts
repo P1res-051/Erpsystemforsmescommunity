@@ -1,60 +1,61 @@
 // Utilitários para processamento de dados IPTV
 
-// Mapeamento DDD → UF (completo para Brasil)
-export const DDD_TO_UF: Record<string, string> = {
-  // São Paulo
-  '11': 'SP', '12': 'SP', '13': 'SP', '14': 'SP', '15': 'SP', '16': 'SP', '17': 'SP', '18': 'SP', '19': 'SP',
-  // Rio de Janeiro
-  '21': 'RJ', '22': 'RJ', '24': 'RJ',
-  // Espírito Santo
-  '27': 'ES', '28': 'ES',
-  // Minas Gerais
-  '31': 'MG', '32': 'MG', '33': 'MG', '34': 'MG', '35': 'MG', '37': 'MG', '38': 'MG',
-  // Paraná
-  '41': 'PR', '42': 'PR', '43': 'PR', '44': 'PR', '45': 'PR', '46': 'PR',
-  // Santa Catarina
-  '47': 'SC', '48': 'SC', '49': 'SC',
-  // Rio Grande do Sul
-  '51': 'RS', '53': 'RS', '54': 'RS', '55': 'RS',
-  // Distrito Federal e Goiás
-  '61': 'DF', '62': 'GO', '64': 'GO',
-  // Tocantins
-  '63': 'TO',
-  // Mato Grosso e Mato Grosso do Sul
-  '65': 'MT', '66': 'MT', '67': 'MS',
-  // Acre
-  '68': 'AC',
-  // Rondônia
-  '69': 'RO',
-  // Bahia
-  '71': 'BA', '73': 'BA', '74': 'BA', '75': 'BA', '77': 'BA',
-  // Sergipe
-  '79': 'SE',
-  // Pernambuco
-  '81': 'PE', '87': 'PE',
-  // Alagoas
-  '82': 'AL',
-  // Paraíba
-  '83': 'PB',
-  // Rio Grande do Norte
-  '84': 'RN',
-  // Ceará
-  '85': 'CE', '88': 'CE',
-  // Piauí
-  '86': 'PI', '89': 'PI',
-  // Pará
-  '91': 'PA', '93': 'PA', '94': 'PA',
-  // Amazonas
-  '92': 'AM', '97': 'AM',
-  // Maranhão
-  '98': 'MA', '99': 'MA',
-  // Amapá
-  '96': 'AP',
-  // Roraima
-  '95': 'RR',
+// Mapeamento completo DDD → UF → Região
+export const DDD_MAP: Record<string, { uf: string; regiao: string }> = {
+  // Sudeste
+  '11': { uf: 'SP', regiao: 'SE' }, '12': { uf: 'SP', regiao: 'SE' }, '13': { uf: 'SP', regiao: 'SE' },
+  '14': { uf: 'SP', regiao: 'SE' }, '15': { uf: 'SP', regiao: 'SE' }, '16': { uf: 'SP', regiao: 'SE' },
+  '17': { uf: 'SP', regiao: 'SE' }, '18': { uf: 'SP', regiao: 'SE' }, '19': { uf: 'SP', regiao: 'SE' },
+  '21': { uf: 'RJ', regiao: 'SE' }, '22': { uf: 'RJ', regiao: 'SE' }, '24': { uf: 'RJ', regiao: 'SE' },
+  '27': { uf: 'ES', regiao: 'SE' }, '28': { uf: 'ES', regiao: 'SE' },
+  '31': { uf: 'MG', regiao: 'SE' }, '32': { uf: 'MG', regiao: 'SE' }, '33': { uf: 'MG', regiao: 'SE' },
+  '34': { uf: 'MG', regiao: 'SE' }, '35': { uf: 'MG', regiao: 'SE' }, '37': { uf: 'MG', regiao: 'SE' },
+  '38': { uf: 'MG', regiao: 'SE' },
+  
+  // Sul
+  '41': { uf: 'PR', regiao: 'S' }, '42': { uf: 'PR', regiao: 'S' }, '43': { uf: 'PR', regiao: 'S' },
+  '44': { uf: 'PR', regiao: 'S' }, '45': { uf: 'PR', regiao: 'S' }, '46': { uf: 'PR', regiao: 'S' },
+  '47': { uf: 'SC', regiao: 'S' }, '48': { uf: 'SC', regiao: 'S' }, '49': { uf: 'SC', regiao: 'S' },
+  '51': { uf: 'RS', regiao: 'S' }, '53': { uf: 'RS', regiao: 'S' }, '54': { uf: 'RS', regiao: 'S' },
+  '55': { uf: 'RS', regiao: 'S' },
+  
+  // Centro-Oeste
+  '61': { uf: 'DF', regiao: 'CO' }, '62': { uf: 'GO', regiao: 'CO' }, '64': { uf: 'GO', regiao: 'CO' },
+  '63': { uf: 'TO', regiao: 'N' }, // TO é Norte administrativamente
+  '65': { uf: 'MT', regiao: 'CO' }, '66': { uf: 'MT', regiao: 'CO' }, '67': { uf: 'MS', regiao: 'CO' },
+  
+  // Norte
+  '68': { uf: 'AC', regiao: 'N' }, '69': { uf: 'RO', regiao: 'N' },
+  '91': { uf: 'PA', regiao: 'N' }, '93': { uf: 'PA', regiao: 'N' }, '94': { uf: 'PA', regiao: 'N' },
+  '92': { uf: 'AM', regiao: 'N' }, '97': { uf: 'AM', regiao: 'N' },
+  '95': { uf: 'RR', regiao: 'N' }, '96': { uf: 'AP', regiao: 'N' },
+  
+  // Nordeste
+  '71': { uf: 'BA', regiao: 'NE' }, '73': { uf: 'BA', regiao: 'NE' }, '74': { uf: 'BA', regiao: 'NE' },
+  '75': { uf: 'BA', regiao: 'NE' }, '77': { uf: 'BA', regiao: 'NE' },
+  '79': { uf: 'SE', regiao: 'NE' }, '82': { uf: 'AL', regiao: 'NE' },
+  '81': { uf: 'PE', regiao: 'NE' }, '87': { uf: 'PE', regiao: 'NE' },
+  '83': { uf: 'PB', regiao: 'NE' }, '84': { uf: 'RN', regiao: 'NE' },
+  '85': { uf: 'CE', regiao: 'NE' }, '88': { uf: 'CE', regiao: 'NE' },
+  '86': { uf: 'PI', regiao: 'NE' }, '89': { uf: 'PI', regiao: 'NE' },
+  '98': { uf: 'MA', regiao: 'NE' }, '99': { uf: 'MA', regiao: 'NE' },
 };
 
-// Mapeamento UF → Região
+// Mapeamento reverso para compatibilidade
+export const DDD_TO_UF: Record<string, string> = Object.fromEntries(
+  Object.entries(DDD_MAP).map(([ddd, { uf }]) => [ddd, uf])
+);
+
+// Nomes completos das regiões
+export const REGION_NAMES: Record<string, string> = {
+  'SE': 'Sudeste',
+  'S': 'Sul',
+  'CO': 'Centro-Oeste',
+  'N': 'Norte',
+  'NE': 'Nordeste',
+};
+
+// Mapeamento UF → Região (formato longo)
 export const UF_TO_REGION: Record<string, string> = {
   'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
   'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 
@@ -62,6 +63,17 @@ export const UF_TO_REGION: Record<string, string> = {
   'DF': 'Centro-Oeste', 'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste',
   'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
   'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul',
+};
+
+// Nomes completos dos estados
+export const STATE_NAMES: Record<string, string> = {
+  'AC': 'Acre', 'AL': 'Alagoas', 'AP': 'Amapá', 'AM': 'Amazonas',
+  'BA': 'Bahia', 'CE': 'Ceará', 'DF': 'Distrito Federal', 'ES': 'Espírito Santo',
+  'GO': 'Goiás', 'MA': 'Maranhão', 'MT': 'Mato Grosso', 'MS': 'Mato Grosso do Sul',
+  'MG': 'Minas Gerais', 'PA': 'Pará', 'PB': 'Paraíba', 'PR': 'Paraná',
+  'PE': 'Pernambuco', 'PI': 'Piauí', 'RJ': 'Rio de Janeiro', 'RN': 'Rio Grande do Norte',
+  'RS': 'Rio Grande do Sul', 'RO': 'Rondônia', 'RR': 'Roraima', 'SC': 'Santa Catarina',
+  'SP': 'São Paulo', 'SE': 'Sergipe', 'TO': 'Tocantins',
 };
 
 // Configuração de turnos
@@ -103,146 +115,169 @@ export function safePct(numerator: number, denominator: number): number {
 }
 
 /**
- * Constrói Date a partir de partes com offset explícito
+ * 🔧 MAPEAMENTO DE CAMPOS CASE-INSENSITIVE
+ * Permite ler diferentes variações de nomes de colunas
  */
-export function buildDateFromParts(dateStr?: string, timeStr?: string, offset: string = '-03:00'): Date | null {
-  try {
-    if (!dateStr) return null;
-    const time = timeStr && /\d{2}:\d{2}/.test(timeStr) ? timeStr : '00:00:00';
-    const iso = `${dateStr}T${time}${offset}`;
-    const d = new Date(iso);
-    return isNaN(d.getTime()) ? null : d;
-  } catch {
-    return null;
-  }
-}
+export const FIELD_MAPPINGS = {
+  usuario: ['Usuario', 'USUARIO', 'user', 'User', 'usuario', 'login', 'Login'],
+  criado: ['Criado_Em', 'CriadoEm', 'Criado', 'CRIADO_EM', 'criado_em', 'created_at', 'createdAt', 'Data_Criacao', 'data_criacao'],
+  data: ['Data', 'DATA', 'date', 'Date', 'data_evento', 'DataEvento', 'data'],
+  creditos: ['Creditos_Apos', 'Creditos', 'CREDITOS_APOS', 'creditos', 'saldo', 'saldo_pos', 'SaldoPos', 'Saldo'],
+  custo: ['Custo', 'CUSTO', 'custo', 'valor', 'Valor', 'price', 'Price'],
+  renovacao: ['Renovacao', 'RENOVACAO', 'renovacao', 'Renovação', 'renewal'],
+};
 
 /**
- * Obtém Date de uma linha no novo formato (DATA/HORARIO, *_DT)
- * type: 'criado' | 'expira' | 'log' | 'data'
+ * 🔍 PICK - Lê campo de objeto com múltiplos nomes possíveis
+ * @param obj Objeto a ser lido
+ * @param keys Array de nomes possíveis do campo
+ * @returns Valor do primeiro campo encontrado ou null
  */
-export function getRowDate(row: any, type: 'criado' | 'expira' | 'log' | 'data' = 'data'): Date | null {
-  if (!row) return null;
-
-  // Preferir campos canônicos *_DT
-  const dtCandidates: string[] = [];
-  if (type === 'criado') dtCandidates.push(row.CRIADO_DT, row.Criado_Em, row.Criado, row.criado_em, row.criado);
-  else if (type === 'expira') dtCandidates.push(row.EXPIRA_DT, row.Expira_Em, row.Expira, row.expira_em, row.expira);
-  else if (type === 'log') dtCandidates.push(row.LOG_DT, row.Data, row.data);
-  else dtCandidates.push(row.DT, row.Data, row.data);
-
-  for (const cand of dtCandidates) {
-    const d = parseDate(cand);
-    if (d) return d;
+export function pick(obj: any, keys: string[]): any {
+  if (!obj) return null;
+  
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+      return obj[key];
+    }
   }
-
-  // Combinar DATA/HORARIO específicos
-  if (type === 'criado') {
-    const d = buildDateFromParts(row.CRIADO_DATA || row.DATA, row.CRIADO_HORARIO || row.HORARIO);
-    if (d) return d;
-  } else if (type === 'expira') {
-    const d = buildDateFromParts(row.EXPIRA_DATA || row.DATA, row.EXPIRA_HORARIO || row.HORARIO);
-    if (d) return d;
-  } else if (type === 'log') {
-    const d = buildDateFromParts(row.LOG_DATA || row.DATA, row.LOG_HORARIO || row.HORARIO);
-    if (d) return d;
-  } else {
-    const d = buildDateFromParts(row.DATA, row.HORARIO);
-    if (d) return d;
-  }
-
-  // Partes numéricas (ANO/MES/DIA/HORA/MINUTO) – fuso local do navegador
-  const ano = row.ANO ?? row.ano;
-  const mes = row.MES ?? row.mes;
-  const dia = row.DIA ?? row.dia;
-  const hora = row.HORA ?? row.hora ?? 0;
-  const min = row.MINUTO ?? row.minuto ?? 0;
-  if (ano && mes && dia) {
-    const d = new Date(ano, mes - 1, dia, hora, min);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
+  
   return null;
 }
 
 /**
- * Parse de data para ISO-8601 no fuso America/Sao_Paulo
+ * 📅 PARSER DE DATA ROBUSTO COM TIMEZONE
+ * Suporta múltiplos formatos e aplica timezone BR (-3h)
+ * @param value Valor a ser parseado (string, Date, number)
+ * @param tzOffsetMinutes Offset de timezone em minutos (padrão: -180 = -3h BR)
+ * @returns Date ou null se inválido
  */
-export function parseDate(dateStr: any): Date | null {
-  if (!dateStr) return null;
+export function parseDateSmart(value: any, tzOffsetMinutes: number = -180): Date | null {
+  if (value == null || value === '') return null;
+  
+  // Se já é Date válida
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value;
+  }
+  
+  // Se é número (Excel serial date)
+  if (typeof value === 'number' && value > 0) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + value * 86400000);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  
+  // Se é string
+  const str = String(value).trim();
+  if (!str || str === '0' || str === '-') return null;
   
   try {
-    // Se já é Date válida
-    if (dateStr instanceof Date && !isNaN(dateStr.getTime())) {
-      // Verifica se não é epoch 0 (31/12/1969)
-      if (dateStr.getTime() === 0 || dateStr.getFullYear() < 1970) return null;
-      return dateStr;
+    // Formato: 2025-10-28 21:30:00 ou 2025-10-28T21:30:00
+    let match = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (match) {
+      const [, y, mo, d, h = '12', mi = '0', se = '0'] = match;
+      // Cria em UTC e aplica offset de timezone
+      const dt = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +se));
+      return new Date(dt.getTime() - tzOffsetMinutes * 60000);
     }
     
-    // Se é número (Excel serial date)
-    if (typeof dateStr === 'number' && dateStr > 0) {
-      // Excel serial dates começam em 1900
-      if (dateStr < 1) return null;
-      const excelEpoch = new Date(1899, 11, 30);
-      const date = new Date(excelEpoch.getTime() + dateStr * 86400000);
-      if (isNaN(date.getTime()) || date.getFullYear() < 1970) return null;
-      return date;
+    // Formato: 28/10/2025 21:30 ou 28-10-2025 21:30
+    match = str.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (match) {
+      const [, d, mo, y, h = '12', mi = '0', se = '0'] = match;
+      // Cria no timezone local (assumindo BR)
+      return new Date(+y, +mo - 1, +d, +h, +mi, +se);
     }
     
-    // Se é string
-    const str = String(dateStr).trim();
-    if (!str || str === '0' || str === '-') return null;
-    
-    // Tenta formatos brasileiros primeiro: DD/MM/YYYY ou DD-MM-YYYY
-    const brMatch = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (brMatch) {
-      const [, day, month, year] = brMatch;
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      if (isNaN(date.getTime()) || date.getFullYear() < 1970) return null;
-      return date;
-    }
-    
-    // Tenta ISO (YYYY-MM-DD)
-    if (str.includes('T') || str.includes('Z') || /^\d{4}-\d{2}-\d{2}/.test(str)) {
-      const date = new Date(str);
-      if (isNaN(date.getTime()) || date.getFullYear() < 1970) return null;
-      return date;
-    }
-
-    // Fallback para Date.parse
-    const parsed = new Date(str);
-    if (isNaN(parsed.getTime()) || parsed.getFullYear() < 1970) return null;
-    return parsed;
+    // Fallback: tenta ISO padrão
+    const fallbackDate = new Date(str);
+    return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
   } catch {
     return null;
   }
 }
 
 /**
- * Extrai DDD do campo Usuario (quando é telefone BR com +55)
+ * Parse de data para ISO-8601 no fuso America/Sao_Paulo
+ * @deprecated Use parseDateSmart() para melhor robustez
+ */
+export function parseDate(dateStr: any): Date | null {
+  return parseDateSmart(dateStr);
+}
+
+/**
+ * Extrai DDD de telefone seguindo as regras:
+ * - Remove caracteres não numéricos
+ * - Se começa com 55, DDD = dígitos 2-3 (índice [2:4])
+ * - Caso contrário, DDD = primeiros 2 dígitos
+ * - Valida se DDD está entre 11-99
+ */
+export function extractDDD(phone: any): string | null {
+  if (!phone) return null;
+  
+  // Remover caracteres não numéricos
+  const num = String(phone).replace(/\D/g, '');
+  
+  if (!num || num.length < 2) return null;
+  
+  let ddd = '';
+  
+  // Se começa com 55 (código do Brasil)
+  if (num.startsWith('55') && num.length >= 4) {
+    ddd = num.slice(2, 4);
+  } else {
+    // Caso contrário, pega os 2 primeiros dígitos
+    ddd = num.slice(0, 2);
+  }
+  
+  // Valida se DDD está entre 11-99
+  const dddNum = parseInt(ddd);
+  if (ddd.length === 2 && dddNum >= 11 && dddNum <= 99 && DDD_MAP[ddd]) {
+    return ddd;
+  }
+  
+  return null;
+}
+
+/**
+ * Extrai informações completas de geolocalização do telefone
+ */
+export function extractGeoFromPhone(phone: any): {
+  ddd: string | null;
+  uf: string | null;
+  regiao: string | null;
+  regiaoNome: string | null;
+  isValid: boolean;
+  original: string;
+} {
+  const original = String(phone || '');
+  const ddd = extractDDD(phone);
+  
+  if (!ddd) {
+    return { ddd: null, uf: null, regiao: null, regiaoNome: null, isValid: false, original };
+  }
+  
+  const mapping = DDD_MAP[ddd];
+  if (!mapping) {
+    return { ddd, uf: null, regiao: null, regiaoNome: null, isValid: false, original };
+  }
+  
+  return {
+    ddd,
+    uf: mapping.uf,
+    regiao: mapping.regiao,
+    regiaoNome: REGION_NAMES[mapping.regiao] || null,
+    isValid: true,
+    original,
+  };
+}
+
+/**
+ * Compatibilidade: Extrai DDD do campo Usuario (antigo)
  */
 export function extractDDDFromUsuario(usuario: any): { ddd: string | null; uf: string | null } {
-  if (!usuario) return { ddd: null, uf: null };
-  
-  const digits = String(usuario).replace(/\D/g, '');
-  
-  // Verifica se começa com 55 (Brasil) e tem pelo menos 4 dígitos
-  if (!digits.startsWith('55') || digits.length < 4) {
-    return { ddd: null, uf: null };
-  }
-  
-  // Extrai DDD (3º e 4º dígitos)
-  const ddd = digits.slice(2, 4);
-  
-  // Valida DDD (deve ser entre 11 e 99)
-  if (!/^[1-9]\d$/.test(ddd)) {
-    return { ddd: null, uf: null };
-  }
-  
-  // Mapeia para UF
-  const uf = DDD_TO_UF[ddd] || null;
-  
-  return { ddd, uf };
+  const result = extractGeoFromPhone(usuario);
+  return { ddd: result.ddd, uf: result.uf };
 }
 
 /**

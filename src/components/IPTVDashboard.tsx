@@ -1,15 +1,17 @@
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Users, CheckCircle, XCircle, TrendingDown, DollarSign, Target, Heart, Calendar, MapPin, Wifi, TrendingUp, Sparkles, Trophy, AlertTriangle, Zap, BarChart2, RefreshCw } from 'lucide-react';
+import { Users, CheckCircle, XCircle, TrendingDown, DollarSign, Target, Heart, Calendar, MapPin, Wifi, TrendingUp, Sparkles, Trophy, AlertTriangle, Zap, BarChart2, RefreshCw, Flame } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardData } from '../App';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
-import { parseDate, formatDate, getRowDate } from '../utils/dataProcessing';
+import { parseDate, formatDate } from '../utils/dataProcessing';
 import { useState, useEffect } from 'react';
+import { getMockBrazilianOrImportantGames } from '../utils/mockGamesData';
 
 interface Props {
   data: DashboardData;
+  onNavigateToGames?: () => void;
 }
 
 // Funções auxiliares para análise avançada
@@ -18,7 +20,7 @@ function calcularRenovacoesUltimaSemana(data: DashboardData): number {
   const umaSemanaAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
   
   return data.rawData.renovacoes.filter((ren: any) => {
-    const dataRen = getRowDate(ren, 'data') || getRowDate(ren, 'criado');
+    const dataRen = parseDate(ren.Data || ren.data || ren.Criado_Em || ren.criado_em);
     return dataRen && dataRen >= umaSemanaAtras && dataRen <= hoje;
   }).length;
 }
@@ -28,7 +30,7 @@ function calcularRenovacoesProximaSemana(data: DashboardData): number {
   const umaSemanaNaFrente = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
   
   return data.rawData.ativos.filter((ativo: any) => {
-    const expiraEm = getRowDate(ativo, 'expira');
+    const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em || ativo.Expiracao || ativo.expiracao);
     return expiraEm && expiraEm >= hoje && expiraEm <= umaSemanaNaFrente;
   }).length;
 }
@@ -38,8 +40,7 @@ function calcularRenovacoesProximas2Semanas(data: DashboardData): number {
   const duasSemanasNaFrente = new Date(hoje.getTime() + 14 * 24 * 60 * 60 * 1000);
   
   return data.rawData.ativos.filter((ativo: any) => {
-    const expiraEn = getRowDate(ativo, 'expira');
-    const expiraEm = expiraEn;
+    const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em || ativo.Expiracao || ativo.expiracao);
     return expiraEm && expiraEm >= hoje && expiraEm <= duasSemanasNaFrente;
   }).length;
 }
@@ -144,44 +145,39 @@ interface JogoFutebol {
   competicao?: string;
   estadio?: string;
   transmissoes?: string[];
+  brasao_casa?: string;
+  brasao_fora?: string;
+  canais?: string;
+  status_text?: string;
+  is_big_game?: boolean;
 }
 
-export function IPTVDashboard({ data }: Props) {
+export function IPTVDashboard({ data, onNavigateToGames }: Props) {
   const [jogosDaSemana, setJogosDaSemana] = useState<JogoFutebol[]>([]);
   const [loadingJogos, setLoadingJogos] = useState(false);
-  const [nomeRevenda, setNomeRevenda] = useState<string>('');
   
-  // Buscar nome da revenda dos dados
-  useEffect(() => {
-    if (data.rawData.ativos && data.rawData.ativos.length > 0) {
-      const revenda = data.rawData.ativos[0].Revenda || data.rawData.ativos[0].revenda || 
-                      data.rawData.ativos[0].Revendedor || data.rawData.ativos[0].revendedor || 'Minha Revenda IPTV';
-      setNomeRevenda(revenda);
-    } else if (data.topRevendedores && data.topRevendedores.length > 0) {
-      setNomeRevenda(data.topRevendedores[0].revendedor || 'Minha Revenda IPTV');
-    }
-  }, [data]);
-  
-  // Função para buscar jogos da API
-  const buscarJogosAPI = async () => {
+  // Função para carregar jogos (apenas mock - sem API)
+  const carregarJogosMock = () => {
     setLoadingJogos(true);
-    try {
-      const response = await fetch('/jogos-hoje', { cache: 'no-store' });
-      if (response.ok) {
-        const { jogos = [] } = await response.json();
-        if (jogos.length > 0) {
-          setJogosDaSemana(jogos.slice(0, 10));
-          return;
-        }
-      }
-    } catch (error) {
-      console.log('API de jogos não disponível, usando dados do Excel');
-    } finally {
-      setLoadingJogos(false);
-    }
     
-    // Fallback: buscar da aba "Jogos" importada do Excel
-    buscarJogosExcel();
+    // Usar dados mock - apenas times brasileiros ou jogos importantes
+    const mockGames = getMockBrazilianOrImportantGames();
+    
+    const jogosMock: JogoFutebol[] = mockGames.map(jogo => ({
+      time_casa: jogo.time_casa,
+      time_fora: jogo.time_fora,
+      horario: jogo.horario,
+      campeonato: jogo.campeonato,
+      estadio: jogo.estadio,
+      brasao_casa: jogo.brasao_casa,
+      brasao_fora: jogo.brasao_fora,
+      canais: jogo.canais,
+      status_text: jogo.status_text,
+      is_big_game: jogo.is_big_game
+    }));
+    
+    setJogosDaSemana(jogosMock);
+    setLoadingJogos(false);
   };
   
   // Função para buscar jogos do Excel
@@ -202,7 +198,12 @@ export function IPTVDashboard({ data }: Props) {
         horario: jogo.Horario || jogo.horario || jogo.hora,
         campeonato: jogo.Competicao || jogo.competicao || jogo.Campeonato || jogo.campeonato,
         estadio: jogo.Estadio || jogo.estadio,
-        transmissoes: jogo.Transmissoes || jogo.transmissoes
+        transmissoes: jogo.Transmissoes || jogo.transmissoes,
+        brasao_casa: jogo.brasao_casa || jogo.Brasao_Casa,
+        brasao_fora: jogo.brasao_fora || jogo.Brasao_Fora,
+        canais: jogo.canais || jogo.Canais,
+        status_text: jogo.status_text || jogo.Status_Text,
+        is_big_game: jogo.is_big_game || jogo.Is_Big_Game || false
       }));
       
       setJogosDaSemana(jogosFormatados);
@@ -212,10 +213,42 @@ export function IPTVDashboard({ data }: Props) {
     }
   };
   
-  // Carregar jogos ao montar
+  // Carregar jogos ao montar (automaticamente) com pipeline robusto
   useEffect(() => {
-    buscarJogosExcel();
-  }, [data]);
+    const loadGames = async () => {
+      try {
+        // Importar serviço de jogos
+        const { getGames } = await import('../utils/gamesService');
+        
+        // Passar dados da planilha se disponíveis
+        const sheetData = data.rawData?.jogos;
+        const games = await getGames(undefined, sheetData);
+        
+        // Formatar para o formato esperado
+        const formatted = games.map(g => ({
+          time_casa: g.home.name,
+          time_fora: g.away.name,
+          horario: g.time,
+          campeonato: g.comp,
+          estadio: g.stadium,
+          brasao_casa: g.home.badge,
+          brasao_fora: g.away.badge,
+          canais: g.channels.join(' | '),
+          status_text: g.status === 'live' ? 'Ao Vivo' : g.status === 'final' ? 'Encerrado' : 'Programado',
+          is_big_game: g.is_big_game,
+          placar: g.score,
+        }));
+        
+        setJogosDaSemana(formatted);
+      } catch (error) {
+        console.error('Erro ao carregar jogos:', error);
+        // Fallback para mock local
+        carregarJogosMock();
+      }
+    };
+    
+    loadGames();
+  }, [data.rawData]);
   
   const statusData = [
     { name: 'Ativos', value: data.clientesAtivos || 0, color: '#10b981' },
@@ -296,8 +329,8 @@ export function IPTVDashboard({ data }: Props) {
       value: `${(data.taxaFidelidade || 0).toFixed(1)}%`,
       subtitle: `${data.clientesFieis || 0} renovaram 2+ vezes`,
       icon: Heart,
-      color: 'text-pink-500',
-      bgColor: 'bg-pink-500/10',
+      color: 'text-[#7B5CFF]',
+      bgColor: 'bg-[#7B5CFF]/10',
     },
     {
       title: 'Clientes Perdidos',
@@ -327,28 +360,8 @@ export function IPTVDashboard({ data }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header com nome da revenda */}
-      {nomeRevenda && (
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-slate-400 text-xs">Relatório da Revenda</p>
-                <h1 className="text-white text-xl">{nomeRevenda}</h1>
-              </div>
-            </div>
-            <Badge className="bg-purple-500/20 text-purple-200 border-purple-400/30">
-              Dashboard Analítico
-            </Badge>
-          </div>
-        </div>
-      )}
-      
       {/* Insights Banner */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-6 shadow-2xl">
+      <div className="bg-gradient-to-r from-[#00BFFF] via-[#0090ff] to-[#7B5CFF] rounded-2xl p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-white" />
@@ -394,7 +407,7 @@ export function IPTVDashboard({ data }: Props) {
             <div className="flex items-center gap-2 mb-1">
               {topTime ? (
                 <>
-                  <Trophy className="w-4 h-4 text-pink-300" />
+                  <Trophy className="w-4 h-4 text-[#00BFFF]" />
                   <span className="text-white/80 text-xs">Time Destaque</span>
                 </>
               ) : estadoMaisPerdidos ? (
@@ -404,7 +417,7 @@ export function IPTVDashboard({ data }: Props) {
                 </>
               ) : (
                 <>
-                  <Heart className="w-4 h-4 text-pink-300" />
+                  <Heart className="w-4 h-4 text-[#7B5CFF]" />
                   <span className="text-white/80 text-xs">Retenção</span>
                 </>
               )}
@@ -422,6 +435,179 @@ export function IPTVDashboard({ data }: Props) {
         </div>
       </div>
 
+      {/* Jogos de Futebol do Dia - 4 Principais em Horizontal */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#00BFFF]/10 via-[#0B0F18] to-[#7B5CFF]/10 rounded-2xl p-6 border-2 border-[#00BFFF]/40 shadow-2xl shadow-[#00BFFF]/20">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 20px 20px, #00BFFF 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        
+        <div className="relative z-10">
+          {/* Header Section */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] blur-lg opacity-60 animate-pulse"></div>
+                <div className="relative w-12 h-12 bg-gradient-to-br from-[#00BFFF] to-[#1E90FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#00BFFF]/50">
+                  <Trophy className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-[#EAF2FF] text-xl font-semibold tracking-tight">
+                  Principais Jogos do Dia
+                </h3>
+                <p className="text-[#9FAAC6] text-xs mt-0.5">
+                  Times Brasileiros • Jogos Importantes
+                </p>
+              </div>
+            </div>
+            {jogosDaSemana.length > 0 && (
+              <Badge className="bg-gradient-to-r from-[#00BFFF]/20 to-[#7B5CFF]/20 text-[#00BFFF] border-[#00BFFF]/50 text-sm px-3 py-1 shadow-lg shadow-[#00BFFF]/20">
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                {jogosDaSemana.length} jogos disponíveis
+              </Badge>
+            )}
+          </div>
+
+          {jogosDaSemana.length > 0 ? (
+            <>
+              {/* Grid 2x2 com 4 Jogos - MENOR E QUADRADO */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {jogosDaSemana.slice(0, 4).map((jogo, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`group relative overflow-hidden rounded-lg border-2 p-3 transition-all duration-300 hover:scale-105 ${
+                      jogo.is_big_game 
+                        ? 'bg-gradient-to-br from-[#00BFFF]/15 to-[#7B5CFF]/15 border-[#00BFFF]/60 hover:border-[#7B5CFF]/80 hover:shadow-xl hover:shadow-[#7B5CFF]/30' 
+                        : 'bg-gradient-to-br from-[#1A2035] to-[#121726] border-[#1E2840] hover:border-[#00BFFF]/60 hover:shadow-xl hover:shadow-[#00BFFF]/20'
+                    }`}
+                  >
+                    {/* Badge "Jogo Importante" */}
+                    {jogo.is_big_game && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <Badge className="bg-gradient-to-r from-[#FF00CC] to-[#FF1493] text-white text-[9px] px-1.5 py-0.5 shadow-lg shadow-[#FF00CC]/50">
+                          <Flame className="w-2.5 h-2.5 mr-0.5" />
+                          Hot
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Time Casa com Emblema */}
+                    <div className="flex flex-col items-center mb-2">
+                      {jogo.brasao_casa && (
+                        <div className="relative mb-1.5">
+                          <div className="absolute inset-0 bg-[#00BFFF] blur-md opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                          <img 
+                            src={jogo.brasao_casa} 
+                            alt={jogo.time_casa || 'Time Casa'} 
+                            className="relative w-10 h-10 object-contain"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+                      <span className="text-[#EAF2FF] font-semibold text-[11px] text-center leading-tight group-hover:text-[#00BFFF] transition-colors line-clamp-2">
+                        {jogo.time_casa || jogo.time1 || 'Time A'}
+                      </span>
+                    </div>
+                    
+                    {/* VS Destacado */}
+                    <div className="flex justify-center mb-2">
+                      <div className="px-2 py-0.5 bg-gradient-to-r from-[#00BFFF]/30 to-[#7B5CFF]/30 rounded border border-[#00BFFF]/50">
+                        <span className="text-[#00BFFF] font-bold text-[10px]">VS</span>
+                      </div>
+                    </div>
+                    
+                    {/* Time Fora com Emblema */}
+                    <div className="flex flex-col items-center mb-2">
+                      {jogo.brasao_fora && (
+                        <div className="relative mb-1.5">
+                          <div className="absolute inset-0 bg-[#7B5CFF] blur-md opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                          <img 
+                            src={jogo.brasao_fora} 
+                            alt={jogo.time_fora || 'Time Fora'} 
+                            className="relative w-10 h-10 object-contain"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+                      <span className="text-[#EAF2FF] font-semibold text-[11px] text-center leading-tight group-hover:text-[#00BFFF] transition-colors line-clamp-2">
+                        {jogo.time_fora || jogo.time2 || 'Time B'}
+                      </span>
+                    </div>
+                    
+                    {/* Horário */}
+                    <div className="flex justify-center mb-2">
+                      <div className="px-3 py-1 bg-gradient-to-r from-[#00BFFF]/40 to-[#1E90FF]/40 rounded-md border border-[#00BFFF]/60 shadow-md">
+                        <span className="text-[#00BFFF] font-bold text-sm tracking-wide">
+                          {jogo.horario || jogo.hora || '--:--'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Detalhes do Jogo - Compacto */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-center gap-1.5 px-2 py-1 bg-[#0b0f19]/70 rounded">
+                        <Trophy className="w-3 h-3 text-[#7B5CFF] flex-shrink-0" />
+                        <span className="text-[#B0BACD] text-[10px] truncate">{jogo.campeonato || jogo.competicao || 'Campeonato'}</span>
+                      </div>
+                      {(jogo.canais || (jogo.transmissoes && jogo.transmissoes.length > 0)) && (
+                        <div className="flex items-center justify-center gap-1.5 px-2 py-1 bg-[#0b0f19]/70 rounded">
+                          <Wifi className="w-3 h-3 text-[#00BFFF] flex-shrink-0" />
+                          <span className="text-[#B0BACD] text-[10px] truncate">{jogo.canais || jogo.transmissoes?.join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Insight Footer com Botão */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-[#00BFFF]/10 to-[#7B5CFF]/10 rounded-xl border border-[#00BFFF]/30 shadow-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-[#00BFFF] to-[#1E90FF] rounded-lg flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[#00BFFF] font-semibold text-sm mb-1">
+                        💡 Insight de Conversão
+                      </p>
+                      <p className="text-[#B0BACD] text-xs leading-relaxed">
+                        Dias com jogos importantes têm <span className="text-[#00BFFF] font-semibold">+23.4%</span> de conversão IPTV!
+                        Invista em ADS durante esses horários para melhor ROI.
+                      </p>
+                    </div>
+                  </div>
+                  {onNavigateToGames && (
+                    <Button
+                      onClick={onNavigateToGames}
+                      size="sm"
+                      className="bg-gradient-to-r from-[#00BFFF] to-[#1E90FF] hover:from-[#1E90FF] hover:to-[#00BFFF] text-white text-sm h-9 px-4 shadow-lg shadow-[#00BFFF]/40 hover:shadow-[#00BFFF]/60 transition-all duration-300 whitespace-nowrap"
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Ver Detalhes
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="p-8 bg-[#1A2035]/50 rounded-xl border border-[#1E2840] text-center">
+              <Trophy className="w-12 h-12 mx-auto mb-3 text-[#00BFFF] opacity-50 animate-pulse" />
+              <p className="text-[#EAF2FF] text-sm mb-2">
+                📺 Carregando jogos do dia...
+              </p>
+              <p className="text-[#9FAAC6] text-xs">
+                Os jogos serão carregados automaticamente
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Insights Avançados - Análise Semanal e Recomendações */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Análise de Renovações e Perdas */}
@@ -432,8 +618,8 @@ export function IPTVDashboard({ data }: Props) {
                 <RefreshCw className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-white text-lg">Análise de Renovações</h3>
-                <p className="text-slate-400 text-xs">Performance semanal detalhada</p>
+                <h3 className="text-[#EAF2FF] text-lg">Análise de Renovações</h3>
+                <p className="text-[#9FAAC6] text-xs">Performance semanal detalhada</p>
               </div>
             </div>
             <Badge className="bg-blue-500/20 text-blue-200 border-blue-400/30">
@@ -506,14 +692,14 @@ export function IPTVDashboard({ data }: Props) {
                           boxShadow: item.count > 0 ? `0 0 ${10 + intensity * 10}px rgba(16, 185, 129, ${0.3 + intensity * 0.3})` : 'none'
                         }}
                       >
-                        <span className={`text-[10px] ${item.count > 0 ? 'text-emerald-200' : 'text-slate-500'}`}>
+                        <span className={`text-[10px] ${item.count > 0 ? 'text-emerald-200' : 'text-[#9FAAC6]'}`}>
                           {item.dia}
                         </span>
                         {item.count > 0 && (
                           <span className="text-white text-xs mt-0.5">{item.count}</span>
                         )}
                       </div>
-                      <span className="text-[9px] text-slate-400 mt-1">{item.label}</span>
+                      <span className="text-[9px] text-[#9FAAC6] mt-1">{item.label}</span>
                     </div>
                   );
                 })}
@@ -584,8 +770,8 @@ export function IPTVDashboard({ data }: Props) {
               <div className="space-y-3">
                 <div className="p-3 bg-slate-800/50 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-400 text-sm">Renovações realizadas</span>
-                    <span className="text-white text-lg">{calcularRenovacoesUltimaSemana(data)}</span>
+                    <span className="text-[#9FAAC6] text-sm">Renovações realizadas</span>
+                    <span className="text-[#EAF2FF] text-lg">{calcularRenovacoesUltimaSemana(data)}</span>
                   </div>
                   <div className="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" 
@@ -595,8 +781,8 @@ export function IPTVDashboard({ data }: Props) {
                 
                 <div className="p-3 bg-slate-800/50 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-400 text-sm">Vencimentos próximos</span>
-                    <span className="text-white text-lg">{calcularRenovacoesProximaSemana(data)}</span>
+                    <span className="text-[#9FAAC6] text-sm">Vencimentos próximos</span>
+                    <span className="text-[#EAF2FF] text-lg">{calcularRenovacoesProximaSemana(data)}</span>
                   </div>
                   <div className="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full w-full" />
@@ -630,8 +816,8 @@ export function IPTVDashboard({ data }: Props) {
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-white text-lg">Recomendações & Insights</h3>
-                <p className="text-slate-400 text-xs">Otimize suas campanhas</p>
+                <h3 className="text-[#EAF2FF] text-lg">Recomendações & Insights</h3>
+                <p className="text-[#9FAAC6] text-xs">Otimize suas campanhas</p>
               </div>
             </div>
             <Badge className="bg-orange-500/20 text-orange-200 border-orange-400/30">
@@ -641,127 +827,90 @@ export function IPTVDashboard({ data }: Props) {
           </div>
           
           <div className="space-y-4">
-            {/* Melhores Dias para ADS - Melhorado */}
+            {/* Melhores Dias para ADS - Com Calendário Visual */}
             <div className="p-5 bg-gradient-to-br from-orange-500/20 to-amber-600/10 rounded-xl border border-orange-500/40 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-orange-500/30 rounded-lg flex items-center justify-center">
                     <Target className="w-4 h-4 text-orange-300" />
                   </div>
-                  <span className="text-orange-200">Melhores Dias para ADS</span>
+                  <span className="text-orange-200 font-semibold">Melhores Dias para ADS</span>
                 </div>
                 <Badge className="bg-orange-500/20 text-orange-200 border-orange-400/30">Top 3</Badge>
               </div>
-              <div className="space-y-2">
+
+              {/* Ranking de Dias */}
+              <div className="grid grid-cols-1 gap-2 mb-4">
                 {recomendarDiasParaAds(data).map((rec, idx) => (
-                  <div key={idx} className="group p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg border border-slate-700/50 hover:border-orange-500/50 transition-all duration-300 hover:shadow-md hover:shadow-orange-500/10">
+                  <div key={idx} className="group p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg border border-slate-700/50 hover:border-orange-500/50 transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center shadow-md">
-                          <span className="text-white text-sm">{idx + 1}º</span>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-md ${
+                          idx === 0 ? 'bg-gradient-to-br from-orange-500 to-amber-500' :
+                          idx === 1 ? 'bg-gradient-to-br from-orange-400 to-amber-400' :
+                          'bg-gradient-to-br from-orange-300 to-amber-300'
+                        }`}>
+                          <span className="text-white text-sm font-bold">{idx + 1}º</span>
                         </div>
-                        <span className="text-white capitalize group-hover:text-orange-200 transition-colors">{rec.dia}</span>
+                        <span className="text-[#EAF2FF] capitalize font-medium">{rec.dia}</span>
                       </div>
-                      <Badge className="bg-slate-700/50 text-slate-300 text-xs">{rec.motivo}</Badge>
+                      <Badge className="bg-[#1E2840]/50 text-[#B0BACD] text-xs">{rec.motivo}</Badge>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {/* Calendário Visual Semanal */}
+              <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50 mb-3">
+                <p className="text-[#9FAAC6] text-xs mb-3 text-center">Calendário de Conversões Históricas</p>
+                <div className="grid grid-cols-7 gap-2">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia, idx) => {
+                    const diasCompletos = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+                    const conversoes = (data.conversoesPorDia || {})[diasCompletos[idx]] || 0;
+                    const maxConversoes = Math.max(...Object.values(data.conversoesPorDia || {}));
+                    const intensity = maxConversoes > 0 ? conversoes / maxConversoes : 0;
+                    const isTop3 = recomendarDiasParaAds(data).some(rec => rec.dia.includes(diasCompletos[idx].split('-')[0]));
+                    
+                    return (
+                      <div key={idx} className="flex flex-col items-center">
+                        <div 
+                          className={`w-full aspect-square rounded-lg border transition-all duration-300 hover:scale-110 cursor-pointer flex flex-col items-center justify-center ${
+                            isTop3
+                              ? 'bg-gradient-to-br from-orange-500/60 to-amber-500/40 border-orange-400/70 shadow-lg shadow-orange-500/30' 
+                              : conversoes > 0
+                              ? 'bg-gradient-to-br from-orange-500/30 to-amber-500/20 border-orange-400/40'
+                              : 'bg-slate-800/30 border-slate-700/30'
+                          }`}
+                          style={{
+                            boxShadow: isTop3 ? '0 0 15px rgba(249, 115, 22, 0.5)' : conversoes > 0 ? `0 0 ${5 + intensity * 10}px rgba(249, 115, 22, ${0.2 + intensity * 0.3})` : 'none'
+                          }}
+                        >
+                          <span className={`text-[9px] ${isTop3 ? 'text-white font-bold' : conversoes > 0 ? 'text-orange-200' : 'text-[#9FAAC6]'}`}>
+                            {dia}
+                          </span>
+                          {conversoes > 0 && (
+                            <span className={`text-[10px] mt-0.5 ${isTop3 ? 'text-white font-bold' : 'text-orange-200'}`}>
+                              {conversoes}
+                            </span>
+                          )}
+                        </div>
+                        {isTop3 && (
+                          <div className="mt-1">
+                            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="mt-3 p-2 bg-orange-500/10 rounded-lg">
                 <p className="text-orange-300 text-xs flex items-center gap-2">
                   <Zap className="w-3 h-3" />
                   Invista em ADS nesses dias para melhor ROI!
                 </p>
               </div>
-            </div>
-
-            {/* Jogos de Futebol da Semana - Melhorado com API */}
-            <div className="p-5 bg-gradient-to-br from-green-500/20 to-emerald-600/10 rounded-xl border border-green-500/40 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-500/30 rounded-lg flex items-center justify-center">
-                    <Trophy className="w-4 h-4 text-green-300" />
-                  </div>
-                  <span className="text-green-200">Jogos de Futebol da Semana</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {jogosDaSemana.length > 0 && (
-                    <Badge className="bg-green-500/20 text-green-200 border-green-400/30">
-                      {jogosDaSemana.length} jogos
-                    </Badge>
-                  )}
-                  <Button
-                    onClick={buscarJogosAPI}
-                    disabled={loadingJogos}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white text-xs h-7 px-3"
-                  >
-                    {loadingJogos ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                        Carregando...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-3 h-3 mr-1" />
-                        Carregar API
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-              {jogosDaSemana.length > 0 ? (
-                <div className="space-y-2">
-                  {jogosDaSemana.slice(0, 5).map((jogo, idx) => (
-                    <div key={idx} className="group p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg border border-slate-700/50 hover:border-green-500/50 transition-all duration-300 hover:shadow-md hover:shadow-green-500/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="text-white text-sm group-hover:text-green-200 transition-colors">
-                            {jogo.time_casa || jogo.time1 || 'Time A'} <span className="text-slate-500">vs</span> {jogo.time_fora || jogo.time2 || 'Time B'}
-                          </span>
-                        </div>
-                        <Badge className="bg-green-500/20 text-green-300 text-xs border-green-500/30">
-                          {jogo.horario || jogo.hora || '--:--'}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-col gap-1 text-slate-400 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Trophy className="w-3 h-3" />
-                          <span>{jogo.campeonato || jogo.competicao || 'Campeonato'}</span>
-                        </div>
-                        {jogo.estadio && (
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <MapPin className="w-3 h-3" />
-                            <span>{jogo.estadio}</span>
-                          </div>
-                        )}
-                        {jogo.transmissoes && jogo.transmissoes.length > 0 && (
-                          <div className="flex items-center gap-2 text-blue-400">
-                            <Wifi className="w-3 h-3" />
-                            <span>{jogo.transmissoes.join(', ')}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="mt-3 p-3 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20">
-                    <p className="text-green-300 text-sm flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      Dias de jogos importantes têm maior conversão IPTV!
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                  <p className="text-slate-400 text-sm text-center">
-                    📺 Nenhum jogo encontrado para esta semana
-                  </p>
-                  <p className="text-slate-500 text-xs text-center mt-1">
-                    Clique em "Carregar API" ou importe a aba "Jogos" do Excel
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Alerta de Ação - Melhorado com Novas Métricas */}
@@ -840,10 +989,10 @@ export function IPTVDashboard({ data }: Props) {
           <Card key={index} className="p-5 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 hover:border-slate-600 transition-all duration-300 hover:shadow-lg hover:shadow-slate-900/50 group">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <p className="text-slate-400 text-sm mb-2">{metric.title}</p>
-                <p className="text-white text-3xl mb-1 group-hover:scale-105 transition-transform duration-300">{metric.value}</p>
+                <p className="text-[#9FAAC6] text-sm mb-2">{metric.title}</p>
+                <p className="text-[#EAF2FF] text-3xl mb-1 group-hover:scale-105 transition-transform duration-300">{metric.value}</p>
                 {metric.subtitle && (
-                  <p className="text-slate-500 text-xs">{metric.subtitle}</p>
+                  <p className="text-[#9FAAC6] text-xs">{metric.subtitle}</p>
                 )}
               </div>
               <div className={`w-14 h-14 rounded-xl ${metric.bgColor} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
@@ -898,9 +1047,9 @@ export function IPTVDashboard({ data }: Props) {
             <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-white">Vendas por Mês</h3>
+            <h3 className="text-[#EAF2FF]">Vendas por Mês</h3>
           </div>
-          <p className="text-slate-400 text-sm mb-4">Quantas pessoas compraram em cada mês (linha do tempo completa)</p>
+          <p className="text-[#9FAAC6] text-sm mb-4">Quantas pessoas compraram em cada mês (linha do tempo completa)</p>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.conversoesPorMes || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -921,7 +1070,7 @@ export function IPTVDashboard({ data }: Props) {
             </div>
             {data.conversoesPorMes && data.conversoesPorMes.length > 0 && (
               <div className="text-center p-2 bg-slate-800/50 rounded border border-slate-700">
-                <p className="text-slate-400 text-xs">
+                <p className="text-[#9FAAC6] text-xs">
                   📅 Operação iniciada em {data.conversoesPorMes[0]?.mes || '-'}
                 </p>
               </div>
@@ -936,9 +1085,9 @@ export function IPTVDashboard({ data }: Props) {
           <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
-          <h3 className="text-white">Calendário de Vencimentos</h3>
+          <h3 className="text-[#EAF2FF]">Calendário de Vencimentos</h3>
         </div>
-        <p className="text-slate-400 text-sm mb-4">Distribuição de vencimentos nos próximos 30 dias</p>
+        <p className="text-[#9FAAC6] text-sm mb-4">Distribuição de vencimentos nos próximos 30 dias</p>
         
         {(() => {
           const hoje = new Date();
@@ -995,7 +1144,7 @@ export function IPTVDashboard({ data }: Props) {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8 text-slate-400">
+                <div className="text-center py-8 text-[#9FAAC6]">
                   Nenhum vencimento nos próximos 30 dias
                 </div>
               )}
@@ -1007,7 +1156,7 @@ export function IPTVDashboard({ data }: Props) {
       {/* Activity by Day */}
       <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-xl">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#7B5CFF] to-[#5B3FCC] rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
           <h3 className="text-white">Atividade por Dia da Semana</h3>

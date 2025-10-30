@@ -1,5 +1,25 @@
 # 📚 Índice - Documentação Completa
 
+## 🆕 Novidades - Versão 2.1
+
+### 🗺️ Aba Geográfico - Análise Completa
+
+| Arquivo | Descrição | Para Quem? |
+|---------|-----------|------------|
+| [ANALISE_GEOGRAFICA.md](ANALISE_GEOGRAFICA.md) | 📖 Guia completo da aba Geografia | 📊 Todos os usuários |
+| [EXEMPLOS_USO_GEOGRAFICO.md](EXEMPLOS_USO_GEOGRAFICO.md) | 💼 10 casos práticos de uso | 🎯 Gestores |
+| [TESTE_EXTRACAO_DDD.md](TESTE_EXTRACAO_DDD.md) | 🧪 Validação e testes de DDD | 🔧 Técnicos |
+| [RESUMO_IMPLEMENTACAO_GEO.md](RESUMO_IMPLEMENTACAO_GEO.md) | 📋 Resumo técnico da implementação | 💻 Desenvolvedores |
+
+**Recursos Implementados:**
+- ✅ Extração inteligente de DDD (112 DDDs)
+- ✅ Mapa interativo do Brasil
+- ✅ Análise por UF (27 estados) e Região (5 regiões)
+- ✅ Alertas de vencimento (7 e 15 dias)
+- ✅ Radar de performance regional
+- ✅ Validação de telefones inválidos
+- ✅ Exportação multi-abas (4 abas)
+
 ## 🎯 Início Rápido
 
 | Arquivo | Descrição | Para Quem? |
@@ -125,11 +145,16 @@ styles/
 - Top competições
 - Análise por período
 
-### 7. Geografia
-- Mapa de calor
-- Ranking estados
-- Ranking cidades
-- Distribuição geográfica
+### 7. Geografia 🆕
+- **NOVO**: Extração inteligente de DDD
+- **NOVO**: Mapa interativo do Brasil
+- **NOVO**: 4 KPIs principais
+- **NOVO**: Insights automáticos
+- **NOVO**: Análise por UF e Região
+- **NOVO**: Alertas de vencimento (7/15 dias)
+- **NOVO**: Radar de performance
+- **NOVO**: Validação de telefones
+- **NOVO**: Exportação multi-abas
 
 ### 8. Tráfego
 - Origem de tráfego

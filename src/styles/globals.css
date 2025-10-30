@@ -42,40 +42,88 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  /* 🎨 AUTONOMYX - Sistema de Design 2.0 */
+  /* Baseado na logo: Ciano Elétrico (#00BFFF) + Magenta Neon (#FF00CC) */
+  
+  /* Fundos - Azul Petróleo (3 níveis) */
+  --background: #0B0F18;        /* Fundo Principal - Azul Petróleo Escuro */
+  --card: #121726;              /* Card Padrão - Azul Marinho */
+  --card-hover: #1A2035;        /* Card Ativo/Hover - Azul Slate */
+  
+  /* Textos - Tom Azulado */
+  --foreground: #EAF2FF;        /* Texto Primário - Branco Azulado */
+  --text-secondary: #9FAAC6;    /* Texto Secundário - Cinza Azulado */
+  --text-muted: #6B7694;        /* Texto Menor - Cinza Escuro */
+  --text-label: #B0BACD;        /* Texto de Rótulo */
+  
+  /* Bordas - Tom Azulado */
+  --border: #1E2840;            /* Borda Azul Escuro */
+  --border-glow: rgba(0, 191, 255, 0.2); /* Brilho Ciano */
+  
+  /* Cores da Logo AutonomyX */
+  --brand-cyan: #00BFFF;        /* Ciano Elétrico (Principal) */
+  --brand-magenta: #FF00CC;     /* Magenta Neon (Destaque) */
+  --brand-pink: #FF3DAE;        /* Rosa Vibrante (Secundário) */
+  --brand-blue: #1E90FF;        /* Azul Dodger (Suporte) */
+  
+  /* Cores Funcionais (Baseadas na Logo) */
+  --success: #00BFFF;           /* Ciano - Retenção, Conversões, Positivo */
+  --error: #FF3DAE;             /* Rosa - Churn, Perdas, Negativo */
+  --info: #1E90FF;              /* Azul - Tempo de Vida, Informativo */
+  --insight: #FF00CC;           /* Magenta - Fidelidade, Insights */
+  --warning: #FFB800;           /* Amarelo Elétrico - Alertas */
+  
+  /* Compatibilidade */
+  --card-foreground: #EAF2FF;
+  --popover: #121726;
+  --popover-foreground: #EAF2FF;
+  --primary: #00BFFF;
+  --primary-foreground: #0B0F18;
+  --secondary: #1E2840;
+  --secondary-foreground: #EAF2FF;
+  --muted: #1E2840;
+  --muted-foreground: #9FAAC6;
+  --accent: #1A2035;
+  --accent-foreground: #EAF2FF;
+  --destructive: #FF3DAE;
+  --destructive-foreground: #EAF2FF;
+  --input: #1E2840;
+  --ring: #00BFFF;
+  
+  /* Typography */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Charts - Paleta AutonomyX */
+  --chart-1: #00BFFF;  /* Ciano */
+  --chart-2: #1E90FF;  /* Azul */
+  --chart-3: #FF00CC;  /* Magenta */
+  --chart-4: #FF3DAE;  /* Rosa */
+  --chart-5: #FFB800;  /* Amarelo */
+  
+  /* Sidebar */
+  --sidebar: #121726;
+  --sidebar-foreground: #EAF2FF;
+  --sidebar-primary: #00BFFF;
+  --sidebar-primary-foreground: #0B0F18;
+  --sidebar-accent: #1A2035;
+  --sidebar-accent-foreground: #EAF2FF;
+  --sidebar-border: #1E2840;
+  --sidebar-ring: #00BFFF;
+  
+  /* Spacing & Sizing - Múltiplos de 40px/80px */
+  --card-padding: 1.5rem;       /* 24px */
+  --card-radius: 0.5rem;        /* 8px - Mais moderno */
+  --card-gap: 1rem;             /* 16px */
+  
+  /* Card Heights (Múltiplos de 40px) */
+  --kpi-height: 7.5rem;         /* 120px - KPI Principal */
+  --metric-height: 10rem;       /* 160px - Métricas Secundárias */
+  --chart-height: 20rem;        /* 320px - Gráficos */
+  --chart-large-height: 25rem;  /* 400px - Gráficos Grandes */
+  --table-height: 30rem;        /* 480px - Tabelas */
 }
 
 @theme inline {
@@ -186,6 +234,245 @@
 
 html {
   font-size: var(--font-size);
+}
+
+/* ============================================================ */
+/* 🌌 TEMA CYBER - Efeitos de Brilho e Hover                   */
+/* ============================================================ */
+
+/* Background geral - Gradiente petróleo */
+.dark body {
+  background: linear-gradient(180deg, #091426 0%, #07121f 100%);
+  color: var(--foreground);
+}
+
+/* Cards e Panels - Efeito Cyber com borda glowing */
+.dark .panel,
+.dark .kpi-card,
+.dark [class*="card"] {
+  background: linear-gradient(180deg, var(--card), #0b1a2f 80%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 
+    0 0 0 1px rgba(58, 225, 255, 0.06) inset,
+    0 8px 18px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* Glow circular no hover (conic gradient) */
+.dark .panel::before,
+.dark .kpi-card::before,
+.dark [class*="card"]::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    transparent 0 40%,
+    rgba(58, 225, 255, 0.35) 60%,
+    transparent 80% 100%
+  );
+  filter: blur(14px);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hover - Levitação + Brilho */
+.dark .panel:hover,
+.dark .kpi-card:hover,
+.dark [class*="card"]:hover {
+  transform: translateY(-2px);
+  border-color: rgba(58, 225, 255, 0.45);
+  box-shadow: 
+    0 0 24px rgba(58, 225, 255, 0.18),
+    0 14px 28px rgba(0, 0, 0, 0.5);
+}
+
+.dark .panel:hover::before,
+.dark .kpi-card:hover::before,
+.dark [class*="card"]:hover::before {
+  opacity: 0.35;
+}
+
+/* Badge cyber */
+.dark .badge {
+  background: rgba(33, 243, 154, 0.12);
+  color: #9ff6cf;
+  border: 1px solid rgba(33, 243, 154, 0.3);
+  transition: all 0.18s ease;
+}
+
+.dark .badge:hover {
+  background: rgba(33, 243, 154, 0.2);
+  box-shadow: 0 0 12px rgba(33, 243, 154, 0.3);
+}
+
+/* Botões com efeito neon */
+.dark button:not(.ghost):hover {
+  box-shadow: 0 0 16px rgba(0, 191, 255, 0.4);
+}
+
+/* Inputs com borda ciano */
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: var(--brand-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.1);
+}
+
+/* ============================================================ */
+/* 📊 TICKER BAR - Faixa Dinâmica Estilo CNN (AutonomyX)       */
+/* ============================================================ */
+
+.ticker-bar-wrapper {
+  width: 100%;
+  /* position: sticky removido - o fixed está no App.tsx */
+  z-index: 40;
+  background: linear-gradient(90deg, #0B0F18, #121726, #0B0F18);
+}
+
+.ticker-bar {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  padding: 0 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.ticker-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  animation: scroll-ticker 60s linear infinite;
+  will-change: transform;
+}
+
+/* Parar animação ao hover */
+.ticker-bar:hover .ticker-scroll {
+  animation-play-state: paused;
+}
+
+@keyframes scroll-ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 0 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  height: 100%;
+}
+
+.ticker-item:hover {
+  transform: scale(1.05);
+}
+
+.ticker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.ticker-item:hover .ticker-icon {
+  transform: rotate(360deg);
+}
+
+.ticker-label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+.ticker-value {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.ticker-trend {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 4px;
+  line-height: 1;
+}
+
+.ticker-separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(159, 170, 198, 0.2);
+  margin-left: 16px;
+}
+
+/* Relógio fixo à direita */
+.ticker-clock {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, transparent, #0B0F18 20%);
+  padding-left: 40px;
+  pointer-events: none;
+}
+
+/* Animação de brilho nos valores */
+@keyframes glow-pulse {
+  0%, 100% {
+    text-shadow: 0 0 5px currentColor;
+  }
+  50% {
+    text-shadow: 0 0 15px currentColor, 0 0 20px currentColor;
+  }
+}
+
+.glow-animation {
+  animation: glow-pulse 3s infinite ease-in-out;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .ticker-bar {
+    height: 36px;
+    padding: 0 8px;
+  }
+  
+  .ticker-item {
+    padding: 0 12px;
+  }
+  
+  .ticker-label {
+    font-size: 10px;
+  }
+  
+  .ticker-value {
+    font-size: 11px;
+  }
+  
+  .ticker-clock {
+    right: 8px;
+    padding-left: 20px;
+  }
 }
 
 /* Estilos para os widgets da API-Football */

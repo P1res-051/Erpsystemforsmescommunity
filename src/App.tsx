@@ -10,6 +10,7 @@ import { ConversionView } from './components/ConversionView';
 import { GamesView } from './components/GamesView';
 import { GeographicView } from './components/GeographicView';
 import { TrafficView } from './components/TrafficView';
+import { TickerBar } from './components/TickerBar';
 import * as XLSX from 'xlsx';
 import logoImage from 'figma:asset/041e4507fc9bd0d9356f7ec31328adbf75294fff.png';
 import { 
@@ -24,8 +25,7 @@ import {
   sortByMesAno,
   mapCustoToPlano,
   extractHourFromDate,
-  daysDifference,
-  getRowDate
+  daysDifference
 } from './utils/dataProcessing';
 
 export interface DashboardData {
@@ -131,6 +131,16 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Atualizar relógio a cada minuto
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Atualiza a cada 60 segundos
+    
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     // Tentar carregar dados do localStorage
@@ -169,26 +179,45 @@ export default function App() {
       const processedData = processExcelData(workbook);
       setDashboardData(processedData);
       
-      // Salvar no localStorage (com dados reduzidos para economizar espaço)
+      // Salvar no localStorage (com TODA a base para análise geográfica completa)
       try {
         const dataToSave = {
           ...processedData,
           rawData: {
-            testes: processedData.rawData.testes.slice(0, 100),
-            conversoes: processedData.rawData.conversoes.slice(0, 100),
-            renovacoes: processedData.rawData.renovacoes.slice(0, 100),
-            // Salvar listas completas de ativos/expirados para manter contagens e varreduras corretas
-            ativos: processedData.rawData.ativos,
-            expirados: processedData.rawData.expirados,
-            jogos: processedData.rawData.jogos.slice(0, 50),
-            convJogos: processedData.rawData.convJogos.slice(0, 50),
+            testes: processedData.rawData.testes.slice(0, 200),
+            conversoes: processedData.rawData.conversoes.slice(0, 200),
+            renovacoes: processedData.rawData.renovacoes,  // TODAS as renovações
+            ativos: processedData.rawData.ativos,          // TODOS os clientes ativos
+            expirados: processedData.rawData.expirados,    // TODOS os clientes expirados
+            jogos: processedData.rawData.jogos.slice(0, 100),
+            convJogos: processedData.rawData.convJogos.slice(0, 100),
           },
-          clientesData: processedData.clientesData.slice(0, 100),
-          recentClients: processedData.recentClients.slice(0, 20),
+          clientesData: processedData.clientesData.slice(0, 200),
+          recentClients: processedData.recentClients.slice(0, 50),
         };
         localStorage.setItem('iptvDashboardData', JSON.stringify(dataToSave));
       } catch (storageError) {
         console.warn('Dados muito grandes para localStorage, continuando sem salvar');
+        // Se der erro de espaço, salvar pelo menos os dados essenciais
+        try {
+          const minimalData = {
+            ...processedData,
+            rawData: {
+              testes: [],
+              conversoes: [],
+              renovacoes: processedData.rawData.renovacoes.slice(0, 500),
+              ativos: processedData.rawData.ativos,          // Priorizar clientes completos
+              expirados: processedData.rawData.expirados,
+              jogos: [],
+              convJogos: [],
+            },
+            clientesData: [],
+            recentClients: [],
+          };
+          localStorage.setItem('iptvDashboardData', JSON.stringify(minimalData));
+        } catch {
+          console.error('Impossível salvar no localStorage - base muito grande');
+        }
       }
     } catch (error) {
       console.error('Erro ao processar arquivo:', error);
@@ -305,18 +334,12 @@ export default function App() {
         case 'clientes ativos':
           data.rawData.ativos = jsonData;
           data.clientesAtivos = jsonData.length;
-          data.clientesData = [
-            ...data.clientesData,
-            ...jsonData.map(c => ({ ...(typeof c === 'object' && c ? c : {}), status: 'Ativo' }))
-          ];
+          data.clientesData = [...data.clientesData, ...jsonData.map(c => ({ ...c, status: 'Ativo' }))];
           break;
         case 'clientes expirados':
           data.rawData.expirados = jsonData;
           data.clientesExpirados = jsonData.length;
-          data.clientesData = [
-            ...data.clientesData,
-            ...jsonData.map(c => ({ ...(typeof c === 'object' && c ? c : {}), status: 'Expirado' }))
-          ];
+          data.clientesData = [...data.clientesData, ...jsonData.map(c => ({ ...c, status: 'Expirado' }))];
           break;
         case 'jogos':
           data.rawData.jogos = jsonData;
@@ -336,8 +359,8 @@ export default function App() {
     // Clientes recentes
     data.recentClients = [...data.rawData.ativos, ...data.rawData.expirados]
       .sort((a, b) => {
-        const dateA = getRowDate(a, 'criado')?.getTime() || 0;
-        const dateB = getRowDate(b, 'criado')?.getTime() || 0;
+        const dateA = new Date(a.Criado_Em || a.Criacao || '').getTime();
+        const dateB = new Date(b.Criado_Em || b.Criacao || '').getTime();
         return dateB - dateA;
       })
       .slice(0, 10);
@@ -350,7 +373,7 @@ export default function App() {
     const turnoCount: Record<string, number> = {};
     
     data.forEach(row => {
-      const date = getRowDate(row, 'criado');
+      const date = parseDate(row.Criado_Em || row.criado_em);
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -369,7 +392,7 @@ export default function App() {
     const turnoCount: Record<string, number> = {};
     
     data.forEach(row => {
-      const date = getRowDate(row, 'log');
+      const date = parseDate(row.Data || row.data);
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -394,7 +417,7 @@ export default function App() {
         customerRenewals[usuario] = (customerRenewals[usuario] || 0) + 1;
       }
       
-      const date = getRowDate(row, 'data');
+      const date = parseDate(row.Data || row.data);
       if (date) {
         const dayName = getDayOfWeek(date);
         dayCount[dayName] = (dayCount[dayName] || 0) + 1;
@@ -582,7 +605,7 @@ export default function App() {
       porPlano[planoInfo.nome].count++;
       porPlano[planoInfo.nome].receita += preco;
       
-      const date = getRowDate(row, 'data');
+      const date = parseDate(row.Data || row.data);
       // Filtrar apenas datas válidas e até o mês atual
       if (date && date <= hoje && date.getFullYear() >= hoje.getFullYear() - 1) {
         const mesAno = getMonthYear(date);
@@ -783,7 +806,7 @@ export default function App() {
     const dias = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
     
     data.rawData.conversoes.forEach(row => {
-      const date = getRowDate(row, 'log');
+      const date = parseDate(row.Data || row.data);
       if (date) {
         const dia = getDayOfWeek(date);
         const hora = date.getHours();
@@ -811,7 +834,7 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     
     // Resumo Geral
-    const resumo: (string | number)[][] = [[
+    const resumo = [[
       'Métrica', 'Valor'
     ], [
       'Total de Testes', dashboardData.testes
@@ -856,7 +879,7 @@ export default function App() {
 
     // Dados por Dia da Semana
     const weekdayOrder = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
-    const porDia: (string | number)[][] = [['Dia da Semana', 'Testes', 'Conversões', 'Renovações']];
+    const porDia = [['Dia da Semana', 'Testes', 'Conversões', 'Renovações']];
     weekdayOrder.forEach(day => {
       porDia.push([
         day,
@@ -870,7 +893,7 @@ export default function App() {
 
     // Top Times (se houver dados de jogos)
     if (dashboardData.hasGamesData && dashboardData.topTimes.length > 0) {
-      const topTimes: (string | number)[][] = [['Ranking', 'Time', 'Conversões']];
+      const topTimes = [['Ranking', 'Time', 'Conversões']];
       dashboardData.topTimes.forEach((time, index) => {
         topTimes.push([index + 1, time.time, time.conversoes]);
       });
@@ -901,33 +924,69 @@ export default function App() {
     tabs.push({ id: 'games', label: 'Jogos', icon: Trophy });
   }
 
+  // Adicionar aba de Rastreamento (Em Breve)
+  tabs.push({ id: 'tracking', label: 'Rastreamento', icon: Activity });
+
+  // Extrair nome da revenda
+  const nomeRevenda = dashboardData?.rawData?.ativos?.[0]?.Revenda || 
+                      dashboardData?.rawData?.ativos?.[0]?.revenda || 
+                      dashboardData?.rawData?.ativos?.[0]?.Revendedor || 
+                      dashboardData?.rawData?.ativos?.[0]?.revendedor ||
+                      dashboardData?.topRevendedores?.[0]?.revendedor || '';
+
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700 sticky top-0 z-10 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-5">
+      {/* Header - CONGELADO NO TOPO */}
+      <header className="bg-gradient-to-r from-[#0B0F18] via-[#121726] to-[#0B0F18] border-b border-[#1E2840] fixed top-0 left-0 right-0 z-50 shadow-2xl backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src={logoImage} alt="AutonomyX Logo" className="w-12 h-12 object-contain" />
-              <div>
-                <h1 className="text-white text-xl">AutonomyX - Dashboard</h1>
-                <p className="text-slate-400 text-xs">✨ Gestão Inteligente de Clientes · Sistema Online</p>
+            {/* Logo + Título + Nome Revenda + Horário */}
+            <div className="flex items-center gap-5">
+              {/* Logo Aumentada */}
+              <img src={logoImage} alt="AutonomyX Logo" className="w-16 h-16 object-contain" />
+              
+              <div className="flex flex-col gap-1">
+                <h1 className="text-[#EAF2FF] font-semibold text-xl">AutonomyX - Dashboard</h1>
+                <div className="flex items-center gap-2">
+                  {nomeRevenda && (
+                    <>
+                      <span className="text-[#00BFFF] text-xs font-medium">{nomeRevenda}</span>
+                      <span className="text-[#9FAAC6] text-xs">•</span>
+                    </>
+                  )}
+                  <p className="text-[#9FAAC6] text-xs">✨ Gestão Inteligente de Clientes</p>
+                </div>
+              </div>
+              
+              {/* Horário Atual - Atualiza a cada minuto */}
+              <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#1A2035]/50 rounded-lg border border-[#1E2840]">
+                <Clock className="w-4 h-4 text-[#00BFFF]" />
+                <div className="text-right">
+                  <p className="text-[#EAF2FF] text-sm font-medium">
+                    {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-[#9FAAC6] text-xs">
+                    {currentTime.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                  </p>
+                </div>
               </div>
             </div>
+            
+            {/* Botões de Ação */}
             <div className="flex items-center gap-3">
               {dashboardData && (
                 <>
-                  <div className="hidden md:block px-4 py-2 bg-slate-800/50 rounded-lg border border-slate-700">
-                    <p className="text-slate-400 text-xs">127 usuários</p>
+                  <div className="hidden md:block px-4 py-2 bg-[#1A2035]/50 rounded-lg border border-[#1E2840]">
+                    <p className="text-[#9FAAC6] text-xs">127 usuários</p>
                   </div>
-                  <Button onClick={exportToExcel} variant="outline" className="bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700 hover:border-slate-500 transition-all">
+                  <Button onClick={exportToExcel} variant="outline" className="bg-[#121726] border-[#1E2840] text-[#EAF2FF] hover:bg-[#1A2035] hover:border-[#00BFFF] transition-all">
                     <FileDown className="w-4 h-4 mr-2" />
                     Exportar Relatório
                   </Button>
                 </>
               )}
               <label htmlFor="file-upload">
-                <Button asChild className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg hover:shadow-blue-500/50 transition-all">
+                <Button asChild className="bg-gradient-to-r from-[#00BFFF] to-[#1E90FF] hover:from-[#1E90FF] hover:to-[#00BFFF] shadow-lg hover:shadow-[#00BFFF]/50 transition-all text-[#0B0F18] font-semibold">
                   <span>
                     <Upload className="w-4 h-4 mr-2" />
                     {dashboardData ? 'Atualizar' : 'Carregar Excel'}
@@ -945,12 +1004,22 @@ export default function App() {
           </div>
         </div>
       </header>
+      
+      {/* Ticker Bar - Faixa Dinâmica FIXO (logo abaixo do header) */}
+      {!isLoading && dashboardData && (
+        <div className="fixed top-20 left-0 right-0 z-40">
+          <TickerBar data={dashboardData} />
+        </div>
+      )}
+
+      {/* Espaçamento para compensar header fixo + ticker bar */}
+      <div className={!isLoading && dashboardData ? "h-36" : "h-20"}></div>
 
       {isLoading && (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-400">Processando dados...</p>
+            <p className="text-[#9FAAC6]">Processando dados...</p>
           </div>
         </div>
       )}
@@ -961,8 +1030,8 @@ export default function App() {
             <div className="w-20 h-20 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
               <Upload className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-white text-2xl mb-3">Carregue seu arquivo Excel</h2>
-            <p className="text-slate-400 mb-8">
+            <h2 className="text-[#EAF2FF] text-2xl mb-3">Carregue seu arquivo Excel</h2>
+            <p className="text-[#9FAAC6] mb-8">
               Faça upload do arquivo contendo as abas: Testes, Conversões, Renovações, Clientes Ativos e Clientes Expirados
             </p>
             <label htmlFor="file-upload-center">
@@ -996,8 +1065,8 @@ export default function App() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-gradient-to-r from-[#00BFFF] to-[#1E90FF] text-[#0B0F18] shadow-lg shadow-[#00BFFF]/30'
+                        : 'text-[#9FAAC6] hover:text-[#EAF2FF] hover:bg-[#1A2035]'
                     }`}
                   >
                     <tab.icon className="w-4 h-4" />
@@ -1010,7 +1079,7 @@ export default function App() {
 
           {/* Main Content */}
           <main className="max-w-7xl mx-auto px-6 py-6">
-            {activeTab === 'dashboard' && <IPTVDashboard data={dashboardData} />}
+            {activeTab === 'dashboard' && <IPTVDashboard data={dashboardData} onNavigateToGames={() => setActiveTab('games')} />}
             {activeTab === 'financial' && <FinancialView data={dashboardData} />}
             {activeTab === 'clients' && <ClientsView data={dashboardData} />}
             {activeTab === 'retention' && <RetentionView data={dashboardData} />}
@@ -1018,6 +1087,23 @@ export default function App() {
             {activeTab === 'geographic' && <GeographicView data={dashboardData} />}
             {activeTab === 'traffic' && <TrafficView data={dashboardData} />}
             {activeTab === 'games' && <GamesView data={dashboardData} />}
+            {activeTab === 'tracking' && (
+              <div className="flex items-center justify-center min-h-[60vh]">
+                <Card className="p-12 text-center max-w-md bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-2xl">
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#00BFFF] to-[#1E90FF] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Activity className="w-10 h-10 text-white" />
+                  </div>
+                  <h2 className="text-[#EAF2FF] text-2xl mb-3">Rastreamento de Campanhas</h2>
+                  <p className="text-[#9FAAC6] mb-4">
+                    Em breve você poderá rastrear suas campanhas de marketing via N8N integrado ao sistema.
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00BFFF]/10 rounded-lg border border-[#00BFFF]/30">
+                    <Clock className="w-4 h-4 text-[#00BFFF]" />
+                    <span className="text-[#00BFFF] text-sm">Funcionalidade em Desenvolvimento</span>
+                  </div>
+                </Card>
+              </div>
+            )}
           </main>
         </>
       )}

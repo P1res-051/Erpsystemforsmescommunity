@@ -73,22 +73,24 @@ const formatK = (value: number): string => {
   return value.toFixed(0);
 };
 
-// Paleta de cores neon da Overview
+// Paleta de cores AutonomyX
 const COLORS = {
-  receita: '#2ecc71',
-  receitaNeon: '#3CFFAC',
-  ativos: '#3498db',
-  renovacoes: '#9b59b6',
-  perdas: '#e74c3c',
-  amarelo: '#f39c12',
-  dourado: '#f1c40f',
-  ciano: '#1abc9c',
-  cianoClaro: '#3CFFFC',
-  previsao: '#3498db',
-  fundo: '#0B0F1A',
+  receita: '#00d18f',      // Verde
+  receitaNeon: '#00ffa3',
+  ativos: '#00BFFF',       // Cyan
+  renovacoes: '#7B5CFF',   // Roxo
+  perdas: '#FF00CC',       // Rosa (apenas para perdas críticas)
+  amarelo: '#ffb64d',      // Amarelo
+  dourado: '#ffb64d',
+  ciano: '#00BFFF',
+  cianoClaro: '#00d4ff',
+  previsao: '#0090ff',
+  fundo: '#0B0F18',
+  texto: '#EAF2FF',
+  textoSecundario: '#8ea9d9',
 };
 
-type ViewSection = 'detalhamento' | 'historico-ganhos' | 'desempenho-comercial' | 'trafego-custos' | 'retencao-perdas' | 'oportunidades' | 'receita-acoes' | 'relatorios' | 'estado-atual';
+type ViewSection = 'detalhamento' | 'historico-ganhos' | 'desempenho-comercial' | 'trafego-custos' | 'retencao-perdas' | 'oportunidades' | 'receita-acoes' | 'relatorios';
 
 type PeriodoFiltro = '7d' | '30d' | '90d' | 'personalizado';
 
@@ -845,8 +847,8 @@ export function FinancialView({ data }: Props) {
                             borderColor: `${COLORS.ativos}30`
                           }}
                         >
-                          <p className="text-slate-500 text-[11px] mb-2">Ativos no dia</p>
-                          <p className="text-white text-3xl" style={{ fontWeight: 700 }}>
+                          <p className="text-[#9FAAC6] text-[11px] mb-2">Ativos no dia</p>
+                          <p className="text-[#EAF2FF] text-3xl" style={{ fontWeight: 700 }}>
                             {selectedDay.clientesAtivos.toLocaleString('pt-BR')}
                           </p>
                         </div>
@@ -858,8 +860,8 @@ export function FinancialView({ data }: Props) {
                             borderColor: `${COLORS.amarelo}30`
                           }}
                         >
-                          <p className="text-slate-500 text-[11px] mb-2">Expirando hoje</p>
-                          <p className="text-white text-3xl" style={{ fontWeight: 700 }}>
+                          <p className="text-[#9FAAC6] text-[11px] mb-2">Expirando hoje</p>
+                          <p className="text-[#EAF2FF] text-3xl" style={{ fontWeight: 700 }}>
                             {selectedDayMetrics?.clientesExpirandoHoje || 0}
                           </p>
                         </div>
@@ -1196,15 +1198,15 @@ export function FinancialView({ data }: Props) {
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                         <XAxis 
                           dataKey="dia" 
-                          stroke="#6B7C93"
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
-                          label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5, fill: '#6B7C93' }}
+                          stroke="#E9EDF1"
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                          label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
                         />
                         <YAxis 
-                          stroke="#6B7C93"
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
+                          stroke="#E9EDF1"
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
                           tickFormatter={(value) => `R$ ${formatK(value)}`}
-                          label={{ value: 'Receita (R$)', angle: -90, position: 'insideLeft', fill: '#6B7C93' }}
+                          label={{ value: 'Receita (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
                         />
                         <RechartsTooltip 
                           contentStyle={{ 
@@ -1264,15 +1266,15 @@ export function FinancialView({ data }: Props) {
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                           <XAxis 
                             dataKey="dia" 
-                            stroke="#6B7C93"
-                            tick={{ fill: '#9BA6BE', fontSize: 11 }}
-                            label={{ value: 'Últimos 14 dias', position: 'insideBottom', offset: -5, fill: '#6B7C93' }}
+                            stroke="#E9EDF1"
+                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                            label={{ value: 'Últimos 14 dias', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
                           />
                           <YAxis 
-                            stroke="#6B7C93"
-                            tick={{ fill: '#9BA6BE', fontSize: 11 }}
+                            stroke="#E9EDF1"
+                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
                             tickFormatter={(value) => `R$ ${formatK(value)}`}
-                            label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: '#6B7C93' }}
+                            label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
                           />
                           <RechartsTooltip 
                             contentStyle={{ 
@@ -1306,15 +1308,15 @@ export function FinancialView({ data }: Props) {
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                           <XAxis 
                             dataKey="dia" 
-                            stroke="#6B7C93"
-                            tick={{ fill: '#9BA6BE', fontSize: 11 }}
-                            label={{ value: 'Dia do Período', position: 'insideBottom', offset: -5, fill: '#6B7C93' }}
+                            stroke="#E9EDF1"
+                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                            label={{ value: 'Dia do Período', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
                           />
                           <YAxis 
-                            stroke="#6B7C93"
-                            tick={{ fill: '#9BA6BE', fontSize: 11 }}
+                            stroke="#E9EDF1"
+                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
                             tickFormatter={(value) => `R$ ${formatK(value)}`}
-                            label={{ value: 'Receita Acumulada (R$)', angle: -90, position: 'insideLeft', fill: '#6B7C93', offset: 10 }}
+                            label={{ value: 'Receita Acumulada (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1', offset: 10 }}
                           />
                           <RechartsTooltip 
                             contentStyle={{ 
@@ -1557,15 +1559,15 @@ export function FinancialView({ data }: Props) {
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                         <XAxis 
                           dataKey="mes" 
-                          stroke="#6B7C93"
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
-                          label={{ value: 'Período', position: 'insideBottom', offset: -5, fill: '#6B7C93' }}
+                          stroke="#E9EDF1"
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                          label={{ value: 'Período', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
                         />
                         <YAxis 
-                          stroke="#6B7C93"
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
+                          stroke="#E9EDF1"
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
                           tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
-                          label={{ value: 'LTV (R$)', angle: -90, position: 'insideLeft', fill: '#6B7C93' }}
+                          label={{ value: 'LTV (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
                         />
                         <RechartsTooltip 
                           contentStyle={{ 
@@ -1763,7 +1765,7 @@ export function FinancialView({ data }: Props) {
                           
                           <XAxis 
                             dataKey="dayLabel" 
-                            stroke="#64748b" 
+                            stroke="#E9EDF1" 
                             tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
                             axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
                             height={60}
@@ -1771,7 +1773,7 @@ export function FinancialView({ data }: Props) {
                           
                           <YAxis 
                             stroke="#64748b" 
-                            tick={{ fill: '#64748b', fontSize: 11 }}
+                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
                             axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
                             tickFormatter={(value) => `${value.toFixed(1)}k`}
                           />
@@ -2264,15 +2266,15 @@ export function FinancialView({ data }: Props) {
                         <XAxis 
                           dataKey="dia" 
                           stroke="#6B7C93" 
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
-                          label={{ value: 'Dias Futuros', position: 'insideBottom', offset: -5, fill: '#6B7C93' }}
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                          label={{ value: 'Dias Futuros', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
                         />
                         
                         <YAxis 
-                          stroke="#6B7C93" 
-                          tick={{ fill: '#9BA6BE', fontSize: 11 }}
+                          stroke="#E9EDF1" 
+                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
                           tickFormatter={(value) => `R$ ${formatK(value)}`}
-                          label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: '#6B7C93' }}
+                          label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
                         />
                         
                         <RechartsTooltip 

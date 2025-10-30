@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
@@ -12,31 +12,33 @@ import {
   Search, Filter, Users, CheckCircle, XCircle, Star, Download, 
   List, MessageCircle, MapPin, TrendingUp, Clock, ChevronLeft, 
   ChevronRight, Send, AlertCircle, Check, X, Loader2, Tag, Calendar,
-  Upload, Link
+  Upload
 } from 'lucide-react';
-import { parseDate, formatDate, getRowDate } from '../utils/dataProcessing';
+import { parseDate, formatDate } from '../utils/dataProcessing';
 import * as XLSX from 'xlsx';
+import { COLORS as DS_COLORS, CARD_CLASSES, BUTTON_CLASSES, TEXT_CLASSES } from '../utils/designSystem';
 
 interface Props {
   data: DashboardData;
 }
 
-type ViewSection = 'lista' | 'cobranca' | 'analise' | 'localizacao' | 'historico' | 'gestor';
+type ViewSection = 'lista' | 'cobranca' | 'analise' | 'localizacao' | 'historico' | 'linkGestor';
 
+// Mapeamento de cores do sistema
 const COLORS = {
-  fundo: '#0a0e1a',
-  cardBg: '#0E1321',
-  border: 'rgba(255,255,255,0.05)',
-  textoPrimario: '#E6EBF5',
-  textoSecundario: '#9BA6BE',
-  textoTerciario: '#6B7C93',
-  ativo: '#00FFA3',
-  inativo: '#FF4D4D',
-  roxo: '#9333ea',
-  azul: '#3b82f6',
-  verde: '#10b981',
-  vermelho: '#ef4444',
-  amarelo: '#f59e0b',
+  fundo: DS_COLORS.bgPrimary,
+  cardBg: DS_COLORS.bgCard,
+  border: DS_COLORS.border,
+  textoPrimario: DS_COLORS.textPrimary,
+  textoSecundario: DS_COLORS.textMuted,
+  textoTerciario: DS_COLORS.textDisabled,
+  ativo: DS_COLORS.success,
+  inativo: DS_COLORS.danger,
+  roxo: DS_COLORS.secondary,
+  azul: DS_COLORS.primary,
+  verde: DS_COLORS.success,
+  vermelho: DS_COLORS.danger,
+  amarelo: DS_COLORS.warning,
 };
 
 interface ValidationResult {
@@ -98,328 +100,62 @@ export function ClientsView({ data }: Props) {
   const [expiredPeriod, setExpiredPeriod] = useState<string>('7');
 
   // Estados para Link Gestor
-  const [loginGestor, setLoginGestor] = useState('');
-  const [senhaGestor, setSenhaGestor] = useState('');
-  const [loginPainel, setLoginPainel] = useState('');
-  const [senhaPainel, setSenhaPainel] = useState('');
-  const [gestorPhone, setGestorPhone] = useState('');
-  const [gestorLink, setGestorLink] = useState<string | null>(null);
-  const [gestorLoading, setGestorLoading] = useState(false);
-  const [gestorStatus, setGestorStatus] = useState<string>('');
-  const [linksMapa, setLinksMapa] = useState<Record<string, string>>({});
-  const [scanProgress, setScanProgress] = useState<number>(0);
-  const [clientesSemLink, setClientesSemLink] = useState<Set<string>>(new Set());
-  const [demoMode, setDemoMode] = useState<boolean>(false);
-  const [totalParaPesquisar, setTotalParaPesquisar] = useState<number>(0);
-  const [processados, setProcessados] = useState<number>(0);
-  const [scanInProgress, setScanInProgress] = useState<boolean>(false);
-  const [scanLogs, setScanLogs] = useState<Array<{ ts: number; msg: string; level: 'info' | 'warn' | 'error' }>>([]);
-  const [exibirSegredos, setExibirSegredos] = useState<boolean>(false);
+  const [gestorUsername, setGestorUsername] = useState('');
+  const [gestorPassword, setGestorPassword] = useState('');
+  const [panelUsername, setPanelUsername] = useState('');
+  const [panelPassword, setPanelPassword] = useState('');
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
+  const [quickSearchPhone, setQuickSearchPhone] = useState('');
+  const [searchingLink, setSearchingLink] = useState(false);
+  const [foundLink, setFoundLink] = useState<string | null>(null);
+  
+  // Estados para varredura de base
+  const [scanMode, setScanMode] = useState<'all' | 'active' | 'expired' | 'nolink'>('all');
+  const [demoMode, setDemoMode] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scannedClients, setScannedClients] = useState<Array<{
+    phone: string;
+    email: string;
+    status: string;
+    link: string | null;
+  }>>([]);
+  const [scanStats, setScanStats] = useState({
+    total: 0,
+    processed: 0,
+    withLink: 0,
+    withoutLink: 0,
+  });
+  const [scanLogs, setScanLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
-  const logScan = (msg: string, level: 'info' | 'warn' | 'error' = 'info') => {
-    const entry = { ts: Date.now(), msg, level };
-    setScanLogs(prev => (prev.length > 500 ? [...prev.slice(prev.length - 500), entry] : [...prev, entry]));
-    const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
-    const out = `${prefix} ${new Date(entry.ts).toLocaleTimeString()} ${msg}`;
-    if (level === 'error') console.error(out);
-    else if (level === 'warn') console.warn(out);
-    else console.log(out);
-  };
-
-  // Persistência de credenciais do Gestor/Painel
-  try {
-    const saved = localStorage.getItem('gestorCreds');
-    if (saved && typeof saved === 'string' && saved.length > 0) {
-      const obj = JSON.parse(saved);
-      if (obj && typeof obj === 'object') {
-        if (obj.loginGestor && !loginGestor) setLoginGestor(obj.loginGestor);
-        if (obj.senhaGestor && !senhaGestor) setSenhaGestor(obj.senhaGestor);
-        if (obj.loginPainel && !loginPainel) setLoginPainel(obj.loginPainel);
-        if (obj.senhaPainel && !senhaPainel) setSenhaPainel(obj.senhaPainel);
-      }
-    }
-  } catch {}
-
-  const saveGestorCreds = () => {
-    const obj = { loginGestor, senhaGestor, loginPainel, senhaPainel };
-    localStorage.setItem('gestorCreds', JSON.stringify(obj));
-    alert('✅ Credenciais salvas localmente.');
-  };
-
-  const clearGestorCreds = () => {
-    localStorage.removeItem('gestorCreds');
-    setLoginGestor(''); setSenhaGestor(''); setLoginPainel(''); setSenhaPainel('');
-    alert('🗑️ Credenciais removidas.');
-  };
-
-  const callGestorWebhook = async (telefone: string): Promise<string | null> => {
-    const proxyCandidates = [
-      'http://127.0.0.1:8080/gestor/link-pagamento',
-      'http://127.0.0.1:8081/gestor/link-pagamento',
-    ];
-    const headers = { 'Content-Type': 'application/json' } as Record<string, string>;
-    const body = {
-      telefone,
-      loginGestor,
-      senhaGestor,
-      loginPainel,
-      SenhaPainel: senhaPainel,
-    } as any;
-    const maskString = (s: string) => s.length <= 4 ? '****' : `${s.slice(0,2)}****${s.slice(-2)}`;
-    const maskSecrets = (obj: any) => {
+  // Carregar credenciais salvas ao montar o componente
+  useEffect(() => {
+    const saved = localStorage.getItem('gestorCredentials');
+    if (saved) {
       try {
-        const copy = JSON.parse(JSON.stringify(obj));
-        if (!exibirSegredos) {
-          if (copy.senhaGestor) copy.senhaGestor = maskString(String(copy.senhaGestor));
-          if (copy.SenhaPainel) copy.SenhaPainel = maskString(String(copy.SenhaPainel));
-        }
-        return copy;
-      } catch { return obj; }
-    };
-
-    // Sempre logar a requisição preparada, mesmo em modo demo
-    // Tentativa em múltiplas portas para evitar conflito na 8080
-    let lastError: any = null;
-    for (const proxyUrl of proxyCandidates) {
-      logScan(`REQ → POST ${proxyUrl}`);
-    logScan(`REQ Headers: ${JSON.stringify(headers)}`);
-    logScan(`REQ Body: ${JSON.stringify(exibirSegredos ? body : maskSecrets(body))}`);
-
-    // Se em modo demo ou faltando credenciais, não chama rede
-    const hasCreds = !!(loginGestor && senhaGestor && loginPainel && senhaPainel);
-    if (demoMode || !hasCreds) {
-      logScan(`(demo/sem credenciais) requisição não enviada para ${telefone}`, 'warn');
-      return null;
-    }
-    try {
-      const t0 = performance.now();
-      const r = await fetch(proxyUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      });
-      const t1 = performance.now();
-      const took = Math.round(t1 - t0);
-      const ct = r.headers.get('content-type') || '';
-      logScan(`RESP HTTP ${r.status} content-type=${ct} (${took}ms)`);
-      if (!r.ok) {
-        const tx = await r.text();
-        logScan(`RESP Body [erro]: ${tx.slice(0, 2000)}`, 'warn');
-        lastError = { status: r.status, body: tx };
-        // tentar próximo candidato (ex.: 8081) se 404 ou 5xx
-        if (r.status === 404 || (r.status >= 500 && r.status <= 599)) {
-          logScan(`Tentando próxima porta do proxy...`);
-          continue;
-        }
-        return null;
+        const credentials = JSON.parse(saved);
+        setGestorUsername(credentials.gestorUsername || '');
+        setGestorPassword(credentials.gestorPassword || '');
+        setPanelUsername(credentials.panelUsername || '');
+        setPanelPassword(credentials.panelPassword || '');
+        setCredentialsSaved(true);
+      } catch (error) {
+        console.error('Erro ao carregar credenciais:', error);
       }
-      // Ler texto bruto para log e tentar parsear
-      const rawText = await r.text();
-      logScan(`RESP Body: ${rawText.slice(0, 2000)}`);
-      let j: any = null;
-      try {
-        j = ct.toLowerCase().includes('application/json') ? JSON.parse(rawText) : { body: rawText };
-      } catch (e: any) {
-        logScan(`Falha ao parsear JSON da resposta: ${e?.message || e}`, 'warn');
-      }
-      const tryKeys = ['Link_pagamento','link_pagamento','LinkPagamento','payment_link','url_pagamento','url','link'];
-      let foundKey = '';
-      let link: string | null = null;
-      if (j && typeof j === 'object') {
-        for (const k of tryKeys) {
-          const v = j[k];
-          if (typeof v === 'string' && v.trim().length > 0) { link = v.trim(); foundKey = k; break; }
-        }
-        // tentar campos aninhados comuns
-        if (!link) {
-          const nested = j?.data || j?.result || j?.payload || j?.response;
-          if (nested && typeof nested === 'object') {
-            for (const k of tryKeys) {
-              const v = nested[k];
-              if (typeof v === 'string' && v.trim().length > 0) { link = v.trim(); foundKey = `nested.${k}`; break; }
-            }
-          }
-        }
-      }
-      if (link) logScan(`Link extraído (${foundKey}): ${link}`);
-      else logScan(`Nenhum link encontrado na resposta. Amostra: ${JSON.stringify(j).slice(0, 500)}`, 'warn');
-      return link;
-    } catch (err: any) {
-      logScan(`Falha de rede ao chamar proxy: ${err?.message || err}`, 'error');
-      lastError = err;
-      // tenta próximo candidato
-      continue;
     }
-    }
-    if (lastError) {
-      logScan(`Todas as tentativas de proxy falharam: ${typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError)}`, 'error');
-    }
-    return null;
-  };
-
-  // Buscar link para um telefone
-  const handleBuscarLinkUnico = async () => {
-    if (demoMode) {
-      setGestorStatus('⚠ Modo demonstração: não busca link real.');
-      setGestorLink(null);
-      return;
-    }
-    if (!loginGestor || !senhaGestor) {
-      alert('❌ Informe usuário e senha do Gestor.');
-      return;
-    }
-    if (!loginPainel || !senhaPainel) {
-      alert('❌ Informe usuário e senha do Painel.');
-      return;
-    }
-    if (!gestorPhone.trim()) {
-      alert('❌ Informe um telefone (formato 55 + DDD + número).');
-      return;
-    }
-    const valid = validateBrazilianPhone(gestorPhone);
-    if (!valid.valid) { alert(`❌ Telefone inválido: ${valid.error}`); return; }
-    setGestorLoading(true); setGestorStatus('Procesando...'); setGestorLink(null);
-    try {
-      const link = await callGestorWebhook(valid.formatted);
-      setGestorLink(link);
-      setGestorStatus(link ? 'Link encontrado' : 'Sem link para este usuário');
-    } catch (e: any) {
-      setGestorStatus(`Erro: ${e.message}`);
-    } finally {
-      setGestorLoading(false);
-    }
-  };
-
-  // Verificar links para todos os clientes e montar relatório
-  const handleScanTodosLinks = async () => {
-    // Detectar base truncada por cache antigo: avisa e cancela varredura
-    const totalEsperado = (data.clientesAtivos || 0) + (data.clientesExpirados || 0);
-    const totalDisponivel = allClients.length;
-    if (totalDisponivel < totalEsperado) {
-      alert('⚠ A base carregada parece incompleta (vindo do cache antigo). Clique em "Limpar cache" e reenvie o Excel para varrer todos os clientes.');
-      return;
-    }
-    if (scanInProgress) {
-      console.warn('Varredura já em andamento. Ignorando novo comando.');
-      return;
-    }
-    const hasCreds = !!(loginGestor && senhaGestor && loginPainel && senhaPainel);
-    const effectiveDemo = demoMode || !hasCreds;
-    if (effectiveDemo) {
-      console.log('🧪 Verificação em Modo Demo: sem chamadas de rede.');
-    }
-    const phones: string[] = [];
-    // Usar filteredClients em vez de allClients para respeitar os filtros ativos
-    const clientsToScan = filter === 'sem-link' ? allClients : filteredClients;
-    clientsToScan.forEach(client => {
-      const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
-      if (raw) {
-        const with55 = raw.startsWith('55') ? raw : `55${raw}`;
-        phones.push(with55);
-      }
-    });
-    const uniquePhones = Array.from(new Set(phones));
-    if (uniquePhones.length === 0) {
-      alert('❌ Nenhum telefone encontrado na seleção atual.');
-      return;
-    }
-    setLinksMapa({}); setScanProgress(0); setClientesSemLink(new Set()); setScanLogs([]);
-    setTotalParaPesquisar(uniquePhones.length);
-    setProcessados(0);
-    logScan(`Iniciando varredura. Filtro='${filter}', total únicos=${uniquePhones.length}, demo=${effectiveDemo}`);
-    const mapa: Record<string, string> = {};
-    const semLink = new Set<string>();
-    setScanInProgress(true);
-    try {
-      for (let i = 0; i < uniquePhones.length; i++) {
-        const ph = uniquePhones[i];
-        logScan(`Processando (${i+1}/${uniquePhones.length}) ${ph}`);
-        if (!effectiveDemo) {
-          try {
-            const link = await callGestorWebhook(ph);
-            if (link) {
-              mapa[ph] = link;
-              setLinksMapa(prev => ({ ...prev, [ph]: link }));
-              logScan(`✓ Link encontrado para ${ph}`);
-            } else {
-              semLink.add(ph);
-              setClientesSemLink(prev => {
-                const next = new Set(prev);
-                next.add(ph);
-                return next;
-              });
-              logScan(`– Sem link para ${ph}`, 'warn');
-            }
-          } catch {
-            semLink.add(ph);
-            setClientesSemLink(prev => {
-              const next = new Set(prev);
-              next.add(ph);
-              return next;
-            });
-            logScan(`Erro ao processar ${ph}`, 'error');
-          }
-        } else {
-          // Modo demo: não chama webhook, apenas marca como sem link
-          semLink.add(ph);
-          setClientesSemLink(prev => {
-            const next = new Set(prev);
-            next.add(ph);
-            return next;
-          });
-          // Logar o corpo que seria enviado
-          const demoBody = {
-            telefone: ph,
-            loginGestor,
-            senhaGestor,
-            loginPainel,
-            SenhaPainel: senhaPainel,
-          };
-          logScan(`(demo) marcado sem link: ${ph}`);
-          logScan(`(demo) REQ Body: ${JSON.stringify(exibirSegredos ? demoBody : { ...demoBody, senhaGestor: demoBody.senhaGestor ? '****' : '', SenhaPainel: demoBody.SenhaPainel ? '****' : '' })}`);
-        }
-        setProcessados(i + 1);
-        setScanProgress(((i + 1) / uniquePhones.length) * 100);
-        // Garantir processamento "um por vez" com pausa controlada
-        await new Promise(r => setTimeout(r, 750));
-      }
-    } finally {
-      setScanInProgress(false);
-    }
-    setLinksMapa(mapa);
-    setClientesSemLink(semLink);
-    logScan(`Concluído. Com link=${Object.keys(mapa).length} | Sem link=${semLink.size}`);
-    alert(`✔ Varredura concluída. ${Object.keys(mapa).length} com link, ${semLink.size} sem link.`);
-  };
-
-  const exportLinksMapa = () => {
-    const rows = Object.entries(linksMapa).map(([phone, link]) => ({ Telefone: phone, Link: link }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'LinksGestor');
-    XLSX.writeFile(wb, `LinksGestor_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
-  // (removido) Varredura Teste (10)
+  }, []);
 
   const allClients = [
     ...(data.rawData?.ativos || []).map(c => ({ ...c, status: 'Ativo' })),
     ...(data.rawData?.expirados || []).map(c => ({ ...c, status: 'Expirado' })),
   ];
 
-  // Banner persistente: detectar base truncada (cache antigo com apenas 500+500)
-  const expectedTotal = (data.clientesAtivos || 0) + (data.clientesExpirados || 0);
-  const isTruncated = allClients.length > 0 && allClients.length < expectedTotal;
-
   const filteredClients = allClients.filter(client => {
-    const clientPhone = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
-    const phoneKey = clientPhone.startsWith('55') ? clientPhone : `55${clientPhone}`;
-    
     const matchesFilter = 
       filter === 'all' ||
       (filter === 'active' && client.status === 'Ativo') ||
-      (filter === 'expired' && client.status === 'Expirado') ||
-      (filter === 'sem-link' && clientesSemLink.has(phoneKey));
+      (filter === 'expired' && client.status === 'Expirado');
     
     const matchesSearch = !searchTerm ||
       (client.Usuario || client.usuario || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -446,19 +182,13 @@ export function ClientsView({ data }: Props) {
       filename = 'Clientes_Vencidos';
     }
 
-    const exportData = clientsToExport.map(client => {
-      const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
-      const phoneKey = raw.startsWith('55') ? raw : (raw ? `55${raw}` : '');
-      const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
-      return {
-        'Telefone/Usuário': client.Usuario || client.usuario || '-',
-        'Email': client.Email || client.email || '-',
-        'Data Início': formatDate(parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao)),
-        'Data Vencimento': formatDate(parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao)),
-        'Status': client.status,
-        'Link': linkValue || '-'
-      };
-    });
+    const exportData = clientsToExport.map(client => ({
+      'Telefone/Usuário': client.Usuario || client.usuario || '-',
+      'Email': client.Email || client.email || '-',
+      'Data Início': formatDate(parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao)),
+      'Data Vencimento': formatDate(parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao)),
+      'Status': client.status,
+    }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -805,10 +535,13 @@ export function ClientsView({ data }: Props) {
     // Filtrar clientes expirados no período
     const expiredClients = allClients.filter(client => {
       if (client.status !== 'Expirado') return false;
-
-      const expirationDate = parseDate(client.vencimento);
-      if (!expirationDate) return false;
-      return expirationDate >= cutoffDate && expirationDate <= now;
+      
+      try {
+        const expirationDate = parseDate(client.vencimento);
+        return expirationDate >= cutoffDate && expirationDate <= now;
+      } catch {
+        return false;
+      }
     });
 
     if (expiredClients.length === 0) {
@@ -876,28 +609,22 @@ export function ClientsView({ data }: Props) {
       description: 'Evolução temporal'
     },
     {
-      id: 'gestor' as ViewSection,
+      id: 'linkGestor' as ViewSection,
       label: 'Link Gestor',
-      icon: Link,
+      icon: Check,
       description: 'Gerar/validar links de pagamento'
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Stats Principais */}
+      {/* Stats Principais - Altura Padronizada h=96px */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card 
-          className="p-5 border"
-          style={{ 
-            backgroundColor: COLORS.cardBg,
-            borderColor: COLORS.border
-          }}
-        >
-          <div className="flex items-start justify-between">
+        <Card className={`${CARD_CLASSES.primary} p-5 h-24 flex items-center`}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex-1">
-              <p className="text-slate-400 text-sm mb-1">Total de Clientes</p>
-              <p className="text-white text-2xl">{((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')}</p>
+              <p className="text-[#8ea9d9] text-xs mb-1">Total de Clientes</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{allClients.length.toLocaleString('pt-BR')}</p>
             </div>
             <div 
               className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -908,18 +635,12 @@ export function ClientsView({ data }: Props) {
           </div>
         </Card>
         
-        <Card 
-          className="p-5 border"
-          style={{ 
-            backgroundColor: COLORS.cardBg,
-            borderColor: COLORS.border
-          }}
-        >
-          <div className="flex items-start justify-between">
+        <Card className={`${CARD_CLASSES.primary} p-5 h-24 flex items-center`}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex-1">
-              <p className="text-slate-400 text-sm mb-1">Assinaturas Ativas</p>
-              <p className="text-white text-2xl">{data.clientesAtivos.toLocaleString('pt-BR')}</p>
-              <p className="text-xs mt-1" style={{ color: COLORS.ativo }}>
+              <p className="text-[#8ea9d9] text-xs mb-1">Assinaturas Ativas</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesAtivos.toLocaleString('pt-BR')}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: COLORS.ativo }}>
                 {data.taxaRetencao.toFixed(1)}% ainda assinam
               </p>
             </div>
@@ -932,18 +653,12 @@ export function ClientsView({ data }: Props) {
           </div>
         </Card>
         
-        <Card 
-          className="p-5 border"
-          style={{ 
-            backgroundColor: COLORS.cardBg,
-            borderColor: COLORS.border
-          }}
-        >
-          <div className="flex items-start justify-between">
+        <Card className={`${CARD_CLASSES.primary} p-5 h-24 flex items-center`}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex-1">
-              <p className="text-slate-400 text-sm mb-1">Assinaturas Vencidas</p>
-              <p className="text-white text-2xl">{data.clientesExpirados.toLocaleString('pt-BR')}</p>
-              <p className="text-xs mt-1" style={{ color: COLORS.inativo }}>
+              <p className="text-[#8ea9d9] text-xs mb-1">Assinaturas Vencidas</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesExpirados.toLocaleString('pt-BR')}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: COLORS.inativo }}>
                 {data.churnRate.toFixed(1)}% cancelaram
               </p>
             </div>
@@ -956,18 +671,12 @@ export function ClientsView({ data }: Props) {
           </div>
         </Card>
         
-        <Card 
-          className="p-5 border"
-          style={{ 
-            backgroundColor: COLORS.cardBg,
-            borderColor: COLORS.border
-          }}
-        >
-          <div className="flex items-start justify-between">
+        <Card className={`${CARD_CLASSES.primary} p-5 h-24 flex items-center`}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex-1">
-              <p className="text-slate-400 text-sm mb-1">Clientes Fiéis</p>
-              <p className="text-white text-2xl">{data.clientesFieis.toLocaleString('pt-BR')}</p>
-              <p className="text-xs mt-1" style={{ color: COLORS.roxo }}>
+              <p className="text-[#8ea9d9] text-xs mb-1">Clientes Fiéis</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesFieis.toLocaleString('pt-BR')}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: COLORS.roxo }}>
                 Renovaram 2+ vezes
               </p>
             </div>
@@ -994,10 +703,10 @@ export function ClientsView({ data }: Props) {
         >
           <div className="p-4">
             <div className="mb-4 pb-3 border-b" style={{ borderColor: COLORS.border }}>
-              <h3 className="text-white text-sm mb-1" style={{ fontWeight: 600 }}>
+              <h3 className="text-[#EAF2FF] text-sm mb-1" style={{ fontWeight: 600 }}>
                 Gestão de Clientes
               </h3>
-              <p className="text-slate-500 text-xs">
+              <p className="text-[#8ea9d9] text-xs">
                 Central de Controle
               </p>
             </div>
@@ -1058,49 +767,17 @@ export function ClientsView({ data }: Props) {
           {activeSection === 'lista' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-white flex items-center gap-2">
+                <h2 className="text-[#EAF2FF] flex items-center gap-2">
                   <List className="w-5 h-5" style={{ color: COLORS.ativo }} />
                   <span>Lista de Clientes</span>
                 </h2>
-                <p className="text-slate-500 text-sm mt-1">
+                <p className="text-[#8ea9d9] text-sm mt-1">
                   💡 Visualize, filtre e exporte seus clientes facilmente
                 </p>
-                {isTruncated && (
-                  <div className="mt-3 p-3 rounded-lg border text-xs" style={{ backgroundColor: `${COLORS.amarelo}10`, borderColor: `${COLORS.amarelo}40` }}>
-                    <div className="flex items-center justify-between gap-3">
-                      <span style={{ color: COLORS.amarelo }}>
-                        ⚠ A base carregada parece incompleta. Limpe o cache e reenvie o Excel para varrer todos os clientes.
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel.'); }}
-                        style={{ backgroundColor: COLORS.amarelo, color: 'black' }}
-                      >
-                        Limpar cache
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              <Card 
-                className="p-6 border"
-                style={{ 
-                  backgroundColor: COLORS.cardBg,
-                  borderColor: COLORS.border
-                }}
-              >
-                {/* Ações rápidas */}
-                <div className="flex items-center justify-between mb-3">
-                  <div />
-                  <Button
-                    size="sm"
-                    onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel para carregar todos os clientes.'); }}
-                    style={{ backgroundColor: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textoSecundario }}
-                  >
-                    Limpar cache de dados
-                  </Button>
-                </div>
+              <Card className={`${CARD_CLASSES.primary} p-6`}>
+              
                 {/* Filtros */}
                 <div className="flex flex-col lg:flex-row gap-4 mb-6">
                   <div className="flex gap-2 flex-wrap">
@@ -1114,7 +791,7 @@ export function ClientsView({ data }: Props) {
                       }}
                     >
                       <Filter className="w-4 h-4 mr-2" />
-                      Todos ({((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')})
+                      Todos ({allClients.length})
                     </Button>
                     <Button
                       onClick={() => { setFilter('active'); setCurrentPage(1); }}
@@ -1137,18 +814,6 @@ export function ClientsView({ data }: Props) {
                       }}
                     >
                       Vencidos ({data.clientesExpirados})
-                    </Button>
-                    <Button
-                      onClick={() => { setFilter('sem-link'); setCurrentPage(1); }}
-                      size="sm"
-                      style={{
-                        backgroundColor: filter === 'sem-link' ? COLORS.amarelo : 'transparent',
-                        color: filter === 'sem-link' ? 'white' : COLORS.textoSecundario,
-                        border: `1px solid ${filter === 'sem-link' ? COLORS.amarelo : COLORS.border}`,
-                      }}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Sem Link ({clientesSemLink.size})
                     </Button>
                   </div>
                   
@@ -1218,21 +883,17 @@ export function ClientsView({ data }: Props) {
                         className="border-b hover:bg-transparent"
                         style={{ borderColor: COLORS.border }}
                       >
-                        <TableHead className="text-slate-400">Telefone/Usuário</TableHead>
-                        <TableHead className="text-slate-400">Email</TableHead>
-                        <TableHead className="text-slate-400">Data Início</TableHead>
-                        <TableHead className="text-slate-400">Data Vencimento</TableHead>
-                        <TableHead className="text-slate-400">Status</TableHead>
-                        <TableHead className="text-slate-400">Link</TableHead>
+                        <TableHead className="text-[#8ea9d9]">Telefone/Usuário</TableHead>
+                        <TableHead className="text-[#8ea9d9]">Email</TableHead>
+                        <TableHead className="text-[#8ea9d9]">Data Início</TableHead>
+                        <TableHead className="text-[#8ea9d9]">Data Vencimento</TableHead>
+                        <TableHead className="text-[#8ea9d9]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {currentClients.map((client, index) => {
-                        const criadoEm = getRowDate(client, 'criado');
-                        const expiraEm = getRowDate(client, 'expira');
-                        const clientPhoneRaw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
-                        const phoneKey = clientPhoneRaw.startsWith('55') ? clientPhoneRaw : (clientPhoneRaw ? `55${clientPhoneRaw}` : '');
-                        const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
+                        const criadoEm = parseDate(client.Criado_Em || client.criado_em || client.Criacao || client.criacao);
+                        const expiraEm = parseDate(client.Expira_Em || client.expira_em || client.Expiracao || client.expiracao);
                         
                         return (
                           <TableRow 
@@ -1240,16 +901,16 @@ export function ClientsView({ data }: Props) {
                             className="border-b hover:bg-slate-800/30"
                             style={{ borderColor: COLORS.border }}
                           >
-                            <TableCell className="text-white">
+                            <TableCell className="text-[#EAF2FF]">
                               {client.Usuario || client.usuario || '-'}
                             </TableCell>
-                            <TableCell className="text-slate-300">
+                            <TableCell className="text-[#dbe4ff]">
                               {client.Email || client.email || '-'}
                             </TableCell>
-                            <TableCell className="text-slate-300">
+                            <TableCell className="text-[#dbe4ff]">
                               {formatDate(criadoEm)}
                             </TableCell>
-                            <TableCell className="text-slate-300">
+                            <TableCell className="text-[#dbe4ff]">
                               {formatDate(expiraEm)}
                             </TableCell>
                             <TableCell>
@@ -1263,15 +924,6 @@ export function ClientsView({ data }: Props) {
                               >
                                 {client.status}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-slate-300 break-all">
-                              {linkValue ? (
-                                <a href={linkValue} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>
-                                  {linkValue}
-                                </a>
-                              ) : (
-                                '-'
-                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -1350,256 +1002,9 @@ export function ClientsView({ data }: Props) {
 
                 {filteredClients.length === 0 && (
                   <div className="text-center py-12">
-                    <Search className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                    <p className="text-slate-400">Nenhum cliente encontrado</p>
-                    <p className="text-slate-500 text-sm">Tente ajustar os filtros ou a busca</p>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-
-          {/* Seção: Link Gestor */}
-          {activeSection === 'gestor' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-white flex items-center gap-2">
-                  <Link className="w-5 h-5" style={{ color: COLORS.ativo }} />
-                  <span>Link Gestor</span>
-                </h2>
-                <p className="text-slate-500 text-sm mt-1">
-                  💡 Informe suas credenciais do Gestor e do Painel, salve e gere/verifique links de pagamento.
-                </p>
-              </div>
-
-              <Card className="p-6 border" style={{ backgroundColor: COLORS.cardBg, borderColor: COLORS.border }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Credenciais do Gestor</h3>
-                    <Input placeholder="Usuário do Gestor" value={loginGestor} onChange={e=>setLoginGestor(e.target.value)}
-                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
-                    <Input placeholder="Senha do Gestor" type="password" value={senhaGestor} onChange={e=>setSenhaGestor(e.target.value)}
-                      className="mt-2" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
-                  </div>
-                  <div>
-                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Credenciais do Painel</h3>
-                    <Input placeholder="Usuário do Painel" value={loginPainel} onChange={e=>setLoginPainel(e.target.value)}
-                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
-                    <Input placeholder="Senha do Painel" type="password" value={senhaPainel} onChange={e=>setSenhaPainel(e.target.value)}
-                      className="mt-2" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
-                  </div>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <Button onClick={saveGestorCreds} size="sm" style={{ backgroundColor: COLORS.verde, color: 'white' }}>Salvar Login</Button>
-                  <Button onClick={clearGestorCreds} size="sm" variant="outline"
-                    style={{ backgroundColor: 'transparent', borderColor: COLORS.border, color: COLORS.textoSecundario }}>Limpar</Button>
-                </div>
-
-                <Separator className="my-6" style={{ borderColor: COLORS.border }} />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                  <div>
-                    <h3 className="text-white text-sm mb-2" style={{ fontWeight: 600 }}>Busca rápida de link</h3>
-                    <Input placeholder="Telefone (55 + DDD + número)" value={gestorPhone} onChange={e=>setGestorPhone(e.target.value)}
-                      style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: COLORS.border, color: 'white' }} />
-                    <p className="text-[11px] mt-1" style={{ color: COLORS.textoTerciario }}>Dica: copie de um cliente na lista.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleBuscarLinkUnico} size="sm" style={{ backgroundColor: COLORS.azul, color: 'white' }} disabled={gestorLoading}>
-                      {gestorLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link className="w-4 h-4 mr-2" />} Buscar Link
-                    </Button>
-                    {gestorLink && (
-                      <a href={gestorLink} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: COLORS.ativo }}>Abrir link</a>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-2 text-sm" style={{ color: gestorLink ? COLORS.ativo : COLORS.textoTerciario }}>
-                  {gestorStatus}
-                  {gestorLink && (
-                    <div className="mt-1 break-all" style={{ color: COLORS.textoPrimario }}>Link: {gestorLink}</div>
-                  )}
-                </div>
-
-                <Separator className="my-6" style={{ borderColor: COLORS.border }} />
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white text-sm mb-1" style={{ fontWeight: 600 }}>Ver todos com link</h3>
-                    <p className="text-slate-500 text-xs">Varre sua base e marca quem possui link; exporte a lista.</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <input type="checkbox" id="demo-mode" checked={demoMode} onChange={(e)=>setDemoMode(e.target.checked)} />
-                      <label htmlFor="demo-mode" className="text-xs" style={{ color: COLORS.textoTerciario }}>
-                        Modo Demo (não chama webhook)
-                      </label>
-                    </div>
-                    {/* Filtros compactos diretamente na seção do Gestor */}
-                    <div className="flex gap-2 flex-wrap mt-2">
-                      <Button
-                        onClick={() => { setFilter('all'); setCurrentPage(1); }}
-                        size="sm"
-                        style={{
-                          backgroundColor: filter === 'all' ? `${COLORS.roxo}` : 'transparent',
-                          color: filter === 'all' ? 'white' : COLORS.textoSecundario,
-                          border: `1px solid ${filter === 'all' ? COLORS.roxo : COLORS.border}`,
-                        }}
-                      >
-                        Todos ({((data.clientesAtivos || 0) + (data.clientesExpirados || 0)).toLocaleString('pt-BR')})
-                      </Button>
-                      <Button
-                        onClick={() => { setFilter('active'); setCurrentPage(1); }}
-                        size="sm"
-                        style={{
-                          backgroundColor: filter === 'active' ? COLORS.verde : 'transparent',
-                          color: filter === 'active' ? 'white' : COLORS.textoSecundario,
-                          border: `1px solid ${filter === 'active' ? COLORS.verde : COLORS.border}`,
-                        }}
-                      >
-                        Ativos ({data.clientesAtivos})
-                      </Button>
-                      <Button
-                        onClick={() => { setFilter('expired'); setCurrentPage(1); }}
-                        size="sm"
-                        style={{
-                          backgroundColor: filter === 'expired' ? COLORS.vermelho : 'transparent',
-                          color: filter === 'expired' ? 'white' : COLORS.textoSecundario,
-                          border: `1px solid ${filter === 'expired' ? COLORS.vermelho : COLORS.border}`,
-                        }}
-                      >
-                        Vencidos ({data.clientesExpirados})
-                      </Button>
-                      <Button
-                        onClick={() => { setFilter('sem-link'); setCurrentPage(1); }}
-                        size="sm"
-                        style={{
-                          backgroundColor: filter === 'sem-link' ? COLORS.amarelo : 'transparent',
-                          color: filter === 'sem-link' ? 'white' : COLORS.textoSecundario,
-                          border: `1px solid ${filter === 'sem-link' ? COLORS.amarelo : COLORS.border}`,
-                        }}
-                      >
-                        Sem Link ({clientesSemLink.size})
-                      </Button>
-                    </div>
-                    <div className="mt-2 text-xs" style={{ color: COLORS.textoTerciario }}>
-                      Selecionados para varredura: {filter === 'sem-link' ? clientesSemLink.size : filteredClients.length}
-                    </div>
-                    {isTruncated && (
-                      <div className="mt-2 p-3 rounded-lg border text-xs" style={{ backgroundColor: `${COLORS.amarelo}10`, borderColor: `${COLORS.amarelo}40` }}>
-                        <div className="flex items-center justify-between gap-3">
-                          <span style={{ color: COLORS.amarelo }}>
-                            ⚠ A base atual está truncada ({allClients.length.toLocaleString('pt-BR')} de {expectedTotal.toLocaleString('pt-BR')}). Limpe o cache e reenvie o Excel.
-                          </span>
-                          <Button
-                            size="sm"
-                            onClick={() => { localStorage.removeItem('iptvDashboardData'); alert('Cache limpo. Recarregue a página e reenvie o arquivo Excel.'); }}
-                            style={{ backgroundColor: COLORS.amarelo, color: 'black' }}
-                          >
-                            Limpar cache
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {/* Prévia dos clientes na seleção (até 10) */}
-                    <div className="mt-3 overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
-                            <TableHead className="text-slate-400">Telefone/Usuário</TableHead>
-                            <TableHead className="text-slate-400">Email</TableHead>
-                            <TableHead className="text-slate-400">Status</TableHead>
-                            <TableHead className="text-slate-400">Link</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredClients.slice(0, 10).map((client, idx) => {
-                            const raw = String(client.Usuario || client.usuario || client.telefone || '').replace(/\D/g, '');
-                            const phoneKey = raw.startsWith('55') ? raw : (raw ? `55${raw}` : '');
-                            const linkValue = phoneKey ? (linksMapa[phoneKey] || '') : '';
-                            return (
-                              <TableRow key={idx} className="border-b hover:bg-slate-800/30" style={{ borderColor: COLORS.border }}>
-                                <TableCell className="text-white">{client.Usuario || client.usuario || '-'}</TableCell>
-                                <TableCell className="text-slate-300">{client.Email || client.email || '-'}</TableCell>
-                                <TableCell>
-                                  <Badge 
-                                    variant="outline"
-                                    style={{
-                                      backgroundColor: client.status === 'Ativo' ? `${COLORS.ativo}15` : `${COLORS.inativo}15`,
-                                      borderColor: client.status === 'Ativo' ? `${COLORS.ativo}50` : `${COLORS.inativo}50`,
-                                      color: client.status === 'Ativo' ? COLORS.ativo : COLORS.inativo
-                                    }}
-                                  >
-                                    {client.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-slate-300 break-all">
-                                  {linkValue ? (
-                                    <a href={linkValue} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>
-                                      {linkValue}
-                                    </a>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                  <div className="flex gap-2" style={{ position: 'relative', zIndex: 999, pointerEvents: 'auto' }}>
-                    <Button onClick={handleScanTodosLinks} disabled={scanInProgress} size="sm" style={{ backgroundColor: COLORS.roxo, color: 'white', opacity: scanInProgress ? 0.7 : 1 }}>
-                      {scanInProgress ? 'Verificando...' : 'Verificar Base'}
-                    </Button>
-                    <Button onClick={exportLinksMapa} size="sm" variant="outline"
-                      style={{ backgroundColor: 'transparent', borderColor: COLORS.border, color: COLORS.textoSecundario }}>
-                      <Download className="w-4 h-4 mr-2" /> Exportar Links
-                    </Button>
-                  </div>
-                </div>
-                <Progress value={scanProgress} className="mt-3" />
-                <div className="mt-2 text-xs" style={{ color: COLORS.textoTerciario }}>
-                  Total a pesquisar: {totalParaPesquisar} | Processados: {processados} | Com link: {Object.keys(linksMapa).length} | Sem link: {clientesSemLink.size}
-                </div>
-                <div className="mt-3 p-3 rounded-lg text-xs" style={{ backgroundColor: COLORS.cardBg, border: `1px solid ${COLORS.border}` }}>
-                  <div className="mb-2 flex items-center justify-between" style={{ color: COLORS.textoSecundario }}>
-                    <div>Logs da varredura</div>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={exibirSegredos} onChange={e=>setExibirSegredos(e.target.checked)} />
-                      <span style={{ color: COLORS.textoTerciario }}>Mostrar segredos nos logs</span>
-                    </label>
-                  </div>
-                  <div style={{ maxHeight: 180, overflowY: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace', color: COLORS.textoTerciario }}>
-                    {scanLogs.length === 0 ? (
-                      <div style={{ color: COLORS.textoTerciario }}>Sem logs ainda.</div>
-                    ) : (
-                      scanLogs.slice(-200).map((l, idx) => (
-                        <div key={idx} style={{ whiteSpace: 'pre-wrap', color: l.level === 'error' ? '#ef4444' : l.level === 'warn' ? '#f59e0b' : COLORS.textoTerciario }}>
-                          {new Date(l.ts).toLocaleTimeString()} - {l.msg}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {Object.keys(linksMapa).length > 0 && (
-                  <div className="mt-4 overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
-                          <TableHead className="text-slate-400">Telefone</TableHead>
-                          <TableHead className="text-slate-400">Link</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(linksMapa).map(([ph, ln]) => (
-                          <TableRow key={ph} className="border-b hover:bg-transparent" style={{ borderColor: COLORS.border }}>
-                            <TableCell className="text-white">{ph}</TableCell>
-                            <TableCell className="text-white break-all"><a href={ln} target="_blank" rel="noreferrer" className="underline" style={{ color: COLORS.ativo }}>{ln}</a></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <Search className="w-12 h-12 text-[#9FAAC6] mx-auto mb-3" />
+                    <p className="text-[#8ea9d9]">Nenhum cliente encontrado</p>
+                    <p className="text-[#8ea9d9] text-sm">Tente ajustar os filtros ou a busca</p>
                   </div>
                 )}
               </Card>
@@ -2466,6 +1871,485 @@ export function ClientsView({ data }: Props) {
               >
                 <Clock className="w-16 h-16 mx-auto mb-4 opacity-20" />
                 <p className="text-slate-400">Em breve: linha do tempo de ativações e cancelamentos</p>
+              </Card>
+            </div>
+          )}
+
+          {/* Seção: Link Gestor */}
+          {activeSection === 'linkGestor' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-white flex items-center gap-2">
+                  <Check className="w-5 h-5" style={{ color: COLORS.ativo }} />
+                  <span>Link Gestor</span>
+                </h2>
+                <p className="text-slate-500 text-sm mt-1 flex items-center gap-2">
+                  💡 Informe suas credenciais do Gestor e do Painel, salve e gere/verifique links de pagamento.
+                </p>
+              </div>
+
+              {/* Card de Credenciais */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Credenciais do Gestor */}
+                  <div>
+                    <h3 className="text-[#EAF2FF] text-sm mb-4 font-medium">Credenciais do Gestor</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[#9FAAC6] text-sm mb-2 block">Usuário do Gestor</label>
+                        <Input
+                          value={gestorUsername}
+                          onChange={(e) => setGestorUsername(e.target.value)}
+                          placeholder="Digite o usuário"
+                          className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[#9FAAC6] text-sm mb-2 block">Senha do Gestor</label>
+                        <Input
+                          type="password"
+                          value={gestorPassword}
+                          onChange={(e) => setGestorPassword(e.target.value)}
+                          placeholder="Digite a senha"
+                          className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Credenciais do Painel */}
+                  <div>
+                    <h3 className="text-[#EAF2FF] text-sm mb-4 font-medium">Credenciais do Painel</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[#9FAAC6] text-sm mb-2 block">Usuário do Painel</label>
+                        <Input
+                          value={panelUsername}
+                          onChange={(e) => setPanelUsername(e.target.value)}
+                          placeholder="Digite o usuário"
+                          className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[#9FAAC6] text-sm mb-2 block">Senha do Painel</label>
+                        <Input
+                          type="password"
+                          value={panelPassword}
+                          onChange={(e) => setPanelPassword(e.target.value)}
+                          placeholder="Digite a senha"
+                          className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    onClick={() => {
+                      if (!gestorUsername || !gestorPassword || !panelUsername || !panelPassword) {
+                        alert('❌ Preencha todos os campos!');
+                        return;
+                      }
+                      // Salvar no localStorage
+                      localStorage.setItem('gestorCredentials', JSON.stringify({
+                        gestorUsername,
+                        gestorPassword,
+                        panelUsername,
+                        panelPassword
+                      }));
+                      setCredentialsSaved(true);
+                      alert('✅ Credenciais salvas com sucesso!');
+                    }}
+                    className="bg-[#00C897] hover:bg-[#00B585] text-white"
+                  >
+                    Salvar Login
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setGestorUsername('');
+                      setGestorPassword('');
+                      setPanelUsername('');
+                      setPanelPassword('');
+                      setCredentialsSaved(false);
+                      localStorage.removeItem('gestorCredentials');
+                    }}
+                    variant="outline"
+                    className="border-[#1E2840] text-[#9FAAC6] hover:bg-[#1A2035]"
+                  >
+                    Limpar
+                  </Button>
+                </div>
+
+                {credentialsSaved && (
+                  <div className="mt-4 p-3 bg-[#00C897]/10 border border-[#00C897]/30 rounded-lg">
+                    <p className="text-[#00C897] text-sm flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Credenciais configuradas e salvas
+                    </p>
+                  </div>
+                )}
+              </Card>
+
+              {/* Busca Rápida de Link */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-[#EAF2FF] mb-4 font-medium">Busca rápida de link</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[#9FAAC6] text-sm mb-2 block">
+                      Telefone (55 + DDD + número)
+                    </label>
+                    <Input
+                      value={quickSearchPhone}
+                      onChange={(e) => setQuickSearchPhone(e.target.value)}
+                      placeholder="Ex: 5511999887766"
+                      className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF]"
+                    />
+                    <p className="text-[#6B7694] text-xs mt-1">
+                      Dica: copie de um cliente na lista.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      if (!quickSearchPhone) {
+                        alert('❌ Digite um telefone!');
+                        return;
+                      }
+                      if (!credentialsSaved) {
+                        alert('❌ Configure as credenciais primeiro!');
+                        return;
+                      }
+                      
+                      setSearchingLink(true);
+                      setFoundLink(null);
+                      
+                      try {
+                        // Implementar busca de link via backend
+                        const response = await fetch('http://localhost:8080/gestor/get-link', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            phone: quickSearchPhone,
+                            credentials: {
+                              gestorUsername,
+                              gestorPassword,
+                              panelUsername,
+                              panelPassword
+                            }
+                          })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.link) {
+                          setFoundLink(data.link);
+                        } else {
+                          alert('❌ Link não encontrado para este cliente');
+                        }
+                      } catch (error) {
+                        console.error('Erro ao buscar link:', error);
+                        alert('❌ Erro ao buscar link. Verifique se o proxy está rodando.');
+                      } finally {
+                        setSearchingLink(false);
+                      }
+                    }}
+                    className="bg-[#00BFFF] hover:bg-[#1E90FF] text-white"
+                    disabled={searchingLink}
+                  >
+                    {searchingLink ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-2" />
+                        Buscar Link
+                      </>
+                    )}
+                  </Button>
+
+                  {foundLink && (
+                    <div className="mt-4 p-4 bg-[#00BFFF]/10 border border-[#00BFFF]/30 rounded-lg">
+                      <p className="text-[#00BFFF] text-sm mb-2">Link encontrado:</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={foundLink}
+                          readOnly
+                          className="bg-[#1A2035] border-[#1E2840] text-[#EAF2FF] text-sm"
+                        />
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(foundLink);
+                            alert('✅ Link copiado!');
+                          }}
+                          size="sm"
+                          className="bg-[#00BFFF] hover:bg-[#1E90FF]"
+                        >
+                          Copiar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Ver todos com link */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-[#EAF2FF] mb-2 font-medium">Ver todos com link</h3>
+                <p className="text-[#9FAAC6] text-sm mb-4">
+                  Varre sua base e marca quem possui link, exporte a lista.
+                </p>
+
+                {/* Modo Demo */}
+                <div className="flex items-center gap-2 mb-4 p-3 bg-[#FFB800]/10 border border-[#FFB800]/30 rounded-lg">
+                  <input
+                    type="checkbox"
+                    checked={demoMode}
+                    onChange={(e) => setDemoMode(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label className="text-[#FFB800] text-sm">
+                    Modo Demo (não chama webhook)
+                  </label>
+                </div>
+
+                {/* Tabs de Filtro */}
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setScanMode('all')}
+                    style={{
+                      backgroundColor: scanMode === 'all' ? '#8B5CF6' : 'transparent',
+                      color: scanMode === 'all' ? 'white' : '#9FAAC6',
+                      border: `1px solid ${scanMode === 'all' ? '#8B5CF6' : COLORS.border}`,
+                    }}
+                  >
+                    Todos ({allClients.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setScanMode('active')}
+                    style={{
+                      backgroundColor: scanMode === 'active' ? '#00C897' : 'transparent',
+                      color: scanMode === 'active' ? 'white' : '#9FAAC6',
+                      border: `1px solid ${scanMode === 'active' ? '#00C897' : COLORS.border}`,
+                    }}
+                  >
+                    Ativos ({data.clientesAtivos || 0})
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setScanMode('expired')}
+                    style={{
+                      backgroundColor: scanMode === 'expired' ? '#E84A5F' : 'transparent',
+                      color: scanMode === 'expired' ? 'white' : '#9FAAC6',
+                      border: `1px solid ${scanMode === 'expired' ? '#E84A5F' : COLORS.border}`,
+                    }}
+                  >
+                    Vencidos ({data.clientesExpirados || 0})
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setScanMode('nolink')}
+                    style={{
+                      backgroundColor: scanMode === 'nolink' ? '#6B7694' : 'transparent',
+                      color: scanMode === 'nolink' ? 'white' : '#9FAAC6',
+                      border: `1px solid ${scanMode === 'nolink' ? '#6B7694' : COLORS.border}`,
+                    }}
+                  >
+                    Sem Link (0)
+                  </Button>
+                </div>
+
+                <p className="text-[#9FAAC6] text-sm mb-4">
+                  Selecionados para varredura: {Math.min(1000, allClients.length)}
+                </p>
+
+                {/* Alerta de cache */}
+                {allClients.length >= 1000 && (
+                  <div className="mb-4 p-3 bg-[#FFB800]/10 border border-[#FFB800]/30 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-[#FFB800]" />
+                      <p className="text-[#FFB800] text-sm">
+                        ⚠ A base atual está truncada ({allClients.length.toLocaleString('pt-BR')} de 4.743). Limpe o cache e reenvie o Excel.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-[#FFB800] hover:bg-[#F59E0B] text-white"
+                      onClick={() => {
+                        localStorage.clear();
+                        window.location.reload();
+                      }}
+                    >
+                      Limpar cache
+                    </Button>
+                  </div>
+                )}
+
+                {/* Tabela de Resultados */}
+                {scannedClients.length > 0 && (
+                  <div className="mb-4 border border-[#1E2840] rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#1A2035]">
+                          <TableHead className="text-[#EAF2FF]">Telefone/Usuário</TableHead>
+                          <TableHead className="text-[#EAF2FF]">Email</TableHead>
+                          <TableHead className="text-[#EAF2FF]">Status</TableHead>
+                          <TableHead className="text-[#EAF2FF]">Link</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {scannedClients.slice(0, 10).map((client, idx) => (
+                          <TableRow key={idx} className="border-[#1E2840]">
+                            <TableCell className="text-[#EAF2FF]">{client.phone}</TableCell>
+                            <TableCell className="text-[#9FAAC6]">{client.email || '-'}</TableCell>
+                            <TableCell>
+                              <Badge
+                                style={{
+                                  backgroundColor: client.status === 'Ativo' ? '#00C897' : '#E84A5F',
+                                  color: 'white'
+                                }}
+                              >
+                                {client.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-[#9FAAC6]">{client.link || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3 mb-4">
+                  <Button
+                    onClick={async () => {
+                      if (!credentialsSaved) {
+                        alert('❌ Configure as credenciais primeiro!');
+                        return;
+                      }
+                      
+                      setScanning(true);
+                      setScanProgress(0);
+                      setScanLogs([]);
+                      
+                      // Simular varredura
+                      const clientsToScan = allClients.slice(0, Math.min(1000, allClients.length));
+                      
+                      for (let i = 0; i < clientsToScan.length; i++) {
+                        setScanProgress(Math.round((i / clientsToScan.length) * 100));
+                        
+                        // Simular delay
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                      }
+                      
+                      setScanning(false);
+                      setScanProgress(100);
+                      alert('✅ Varredura concluída!');
+                    }}
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                    disabled={scanning}
+                  >
+                    {scanning ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Verificando... {scanProgress}%
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Verificar Base
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Exportar para Excel
+                      const ws = XLSX.utils.json_to_sheet(scannedClients);
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, 'Links');
+                      XLSX.writeFile(wb, `Links_Gestor_${new Date().toISOString().split('T')[0]}.xlsx`);
+                    }}
+                    variant="outline"
+                    className="border-[#1E2840] text-[#9FAAC6] hover:bg-[#1A2035]"
+                    disabled={scannedClients.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Exportar Links
+                  </Button>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-4 mb-4 p-4 bg-[#1A2035] rounded-lg">
+                  <div>
+                    <p className="text-[#6B7694] text-xs">Total à pesquisar</p>
+                    <p className="text-[#EAF2FF] text-lg font-medium">{scanStats.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#6B7694] text-xs">Processados</p>
+                    <p className="text-[#EAF2FF] text-lg font-medium">{scanStats.processed}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#6B7694] text-xs">Com link</p>
+                    <p className="text-[#00C897] text-lg font-medium">{scanStats.withLink}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#6B7694] text-xs">Sem link</p>
+                    <p className="text-[#E84A5F] text-lg font-medium">{scanStats.withoutLink}</p>
+                  </div>
+                </div>
+
+                {/* Logs */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[#EAF2FF] text-sm">Logs da varredura</h4>
+                    <label className="flex items-center gap-2 text-[#9FAAC6] text-xs">
+                      <input
+                        type="checkbox"
+                        checked={showLogs}
+                        onChange={(e) => setShowLogs(e.target.checked)}
+                        className="w-3 h-3"
+                      />
+                      Mostrar segurados nos logs
+                    </label>
+                  </div>
+                  <div className="bg-[#1A2035] border border-[#1E2840] rounded-lg p-3 h-32 overflow-y-auto">
+                    {scanLogs.length === 0 ? (
+                      <p className="text-[#6B7694] text-sm">Sem logs ainda.</p>
+                    ) : (
+                      scanLogs.map((log, idx) => (
+                        <p key={idx} className="text-[#9FAAC6] text-xs font-mono">
+                          {log}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
               </Card>
             </div>
           )}

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { ChangeEvent } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -285,7 +284,7 @@ export function QuickBilling() {
                           <Input
                             type="number"
                             value={item.quantity}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
                           />
@@ -295,7 +294,7 @@ export function QuickBilling() {
                           <Input
                             type="number"
                             value={item.rate}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                             min="0"
                             step="0.01"
                           />
@@ -307,7 +306,7 @@ export function QuickBilling() {
                           <Label>Tax Rate (%)</Label>
                           <Select
                             value={item.taxRate.toString()}
-                            onValueChange={(value: string) => updateItem(item.id, 'taxRate', parseFloat(value))}
+                            onValueChange={(value) => updateItem(item.id, 'taxRate', parseFloat(value))}
                           >
                             <SelectTrigger>
                               <SelectValue />

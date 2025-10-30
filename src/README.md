@@ -24,7 +24,14 @@ Dashboard analytics profissional para gestão de clientes IPTV com processamento
   - 🔴 Copa Libertadores e Sul-Americana
   - 🟡 Tabela de classificação em tempo real
   - 📊 Análise de impacto nas conversões
-- **Geografia**: Análise por estado e cidade
+- **Geografia**: 
+  - 🔥 **NOVO**: Extração inteligente de DDD de telefones
+  - 🗺️ **NOVO**: Mapa interativo do Brasil com estados coloridos
+  - 📊 **NOVO**: Análise completa por UF e Região (27 estados + 5 regiões)
+  - ⚠️ **NOVO**: Alertas de vencimento (7 e 15 dias) por estado
+  - 📈 **NOVO**: Radar de performance regional
+  - 🔍 **NOVO**: Validação de telefones inválidos
+  - 📥 **NOVO**: Exportação multi-abas (UF, Região, DDDs, Inválidos)
 - **Tráfego**: Origem de tráfego e ROI
 
 ### 🎯 Características
@@ -287,6 +294,7 @@ Edite `/styles/globals.css`:
 ## 📚 Documentação Completa
 
 - 📖 [Melhorias do Overview](./MELHORIAS_OVERVIEW.md) - Detalhes sobre a nova versão 2.0
+- 🗺️ [Análise Geográfica](./ANALISE_GEOGRAFICA.md) - **NOVO**: Guia completo da aba Geografia
 - 🔌 [Integração com API de Futebol](./INTEGRACAO_API_FUTEBOL.md) - Como conectar APIs de jogos
 - 📝 [Changelog](./CHANGELOG.md) - Histórico completo de versões
 - 🚀 [Guia de Deploy](./DEPLOY.md) - Instruções para publicar no GitHub Pages
