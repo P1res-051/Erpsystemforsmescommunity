@@ -346,10 +346,12 @@ export function ClientsView({ data }: Props) {
         throw new Error(`Erro ${response.status}: ${errorText}`);
       }
     } catch (error: any) {
-      console.error('❌ Erro ao buscar TAG:', error);
+      // Silenciar erro de fetch no console (apenas log de warning)
+      console.warn('⚠️ Erro ao buscar TAG:', error.message || error);
       
-      if (error.message?.includes('Failed to fetch')) {
-        alert('❌ Proxy não está rodando!\n\nInicie o proxy primeiro:\nuvicorn botconversa_proxy:app --host 0.0.0.0 --port 8080 --reload');
+      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+        // Proxy não está rodando
+        alert('❌ Proxy não está rodando!\n\n📋 Para usar a integração BotConversa:\n\n1. Abra um terminal\n2. Execute: uvicorn botconversa_proxy:app --host 0.0.0.0 --port 8080 --reload\n3. Volte aqui e clique em "🔍 Buscar TAG" novamente\n\n💡 Ou ative o "Modo Teste" para testar sem o proxy.');
       } else {
         alert(`❌ Erro ao buscar TAG: ${error.message}`);
       }
@@ -639,9 +641,9 @@ export function ClientsView({ data }: Props) {
           <div className="flex items-center justify-between w-full">
             <div className="flex-1">
               <p className="text-[#8ea9d9] text-xs mb-1">Assinaturas Ativas</p>
-              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesAtivos.toLocaleString('pt-BR')}</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{(data.clientesAtivos || 0).toLocaleString('pt-BR')}</p>
               <p className="text-[10px] mt-0.5" style={{ color: COLORS.ativo }}>
-                {data.taxaRetencao.toFixed(1)}% ainda assinam
+                {(data.taxaRetencao || 0).toFixed(1)}% ainda assinam
               </p>
             </div>
             <div 
@@ -657,9 +659,9 @@ export function ClientsView({ data }: Props) {
           <div className="flex items-center justify-between w-full">
             <div className="flex-1">
               <p className="text-[#8ea9d9] text-xs mb-1">Assinaturas Vencidas</p>
-              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesExpirados.toLocaleString('pt-BR')}</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{(data.clientesExpirados || 0).toLocaleString('pt-BR')}</p>
               <p className="text-[10px] mt-0.5" style={{ color: COLORS.inativo }}>
-                {data.churnRate.toFixed(1)}% cancelaram
+                {(data.churnRate || 0).toFixed(1)}% cancelaram
               </p>
             </div>
             <div 
@@ -675,7 +677,7 @@ export function ClientsView({ data }: Props) {
           <div className="flex items-center justify-between w-full">
             <div className="flex-1">
               <p className="text-[#8ea9d9] text-xs mb-1">Clientes Fiéis</p>
-              <p className="text-[#EAF2FF] text-2xl font-bold">{data.clientesFieis.toLocaleString('pt-BR')}</p>
+              <p className="text-[#EAF2FF] text-2xl font-bold">{(data.clientesFieis || 0).toLocaleString('pt-BR')}</p>
               <p className="text-[10px] mt-0.5" style={{ color: COLORS.roxo }}>
                 Renovaram 2+ vezes
               </p>

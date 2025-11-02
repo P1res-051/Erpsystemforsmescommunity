@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════════════════
+    🔓 ACESSO RÁPIDO ADMIN - AUTONOMYX DASHBOARD
+═══════════════════════════════════════════════════════════════
+
+⚡ MÉTODO MAIS RÁPIDO (1 clique):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Abra o dashboard
+2. Clique no botão "ACESSO ADMIN" (botão dourado com badge DEV)
+3. Pronto! Você está dentro
+
+
+🔑 MÉTODO ALTERNATIVO (credenciais manuais):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome da Revenda: admin
+Senha:           admin123
+
+
+✨ CARACTERÍSTICAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Sem necessidade de API
+✓ Login instantâneo (< 1 segundo)
+✓ Não precisa de internet
+✓ Perfeito para desenvolvimento
+✓ Acesso total ao dashboard
+
+
+⚠️  IMPORTANTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Este login é APENAS para desenvolvimento/testes.
+NÃO USE em produção!
+
+
+📚 DOCUMENTAÇÃO COMPLETA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Leia: ACESSO_RAPIDO_ADMIN.md
+Ou:   IMPLEMENTACAO_LOGIN.md
+
+
+═══════════════════════════════════════════════════════════════

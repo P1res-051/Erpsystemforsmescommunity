@@ -1,11 +1,15 @@
 import { Card } from './ui/card';
-import { Trophy, Target, TrendingUp, Award, Calendar, Percent, Sparkles, Flame, RefreshCw, MapPin, BarChart3, Timer, Wifi, Users, DollarSign, Zap, AlertCircle, Medal } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Award, Calendar as CalendarIcon, Percent, Sparkles, Flame, RefreshCw, MapPin, BarChart3, Timer, Wifi, Users, DollarSign, Zap, AlertCircle, Medal, Search } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardData } from '../App';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
+import { Calendar } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Props {
   data: DashboardData;
@@ -60,53 +64,74 @@ export function GamesView({ data }: Props) {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [filtroCategoria, setFiltroCategoria] = useState<'todos' | 'serieA' | 'serieB' | 'copa' | 'internacional' | 'brasileiros'>('brasileiros');
   const [jogosDoDia, setJogosDoDia] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [isLoading, setIsLoading] = useState(false);
+  const [dataAtual, setDataAtual] = useState<string>('');
 
-  // Carregar jogos automaticamente com pipeline robusto
-  useEffect(() => {
-    const carregarJogos = async () => {
-      try {
-        const { getGames } = await import('../utils/gamesService');
-        
-        // Passar dados da planilha se disponíveis
-        const sheetData = data.rawData?.jogos;
-        const games = await getGames(undefined, sheetData);
-        
-        // Formatar para exibição
-        const jogosFormatados = games.map(g => ({
-          time_casa: g.home.name,
-          time_fora: g.away.name,
-          horario: g.time,
-          campeonato: g.comp,
-          estadio: g.stadium,
-          brasao_casa: g.home.badge || 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?',
-          brasao_fora: g.away.badge || 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?',
-          canais: g.channels.join(' | ') || 'Sem transmissão',
-          status_text: g.status === 'live' ? 'Ao Vivo' : g.status === 'final' ? 'Encerrado' : 'Programado',
-          is_big_game: g.is_big_game,
-          placar: g.score,
-        }));
-        
-        setJogosDoDia(jogosFormatados);
-      } catch (error) {
-        console.error('Erro ao carregar jogos:', error);
-        setJogosDoDia([]);
+  // Carregar jogos de hoje automaticamente
+  const carregarJogos = async (dataCustom?: string) => {
+    setIsLoading(true);
+    try {
+      const { getGamesByDate, getGames, todayDateAPI } = await import('../utils/gamesService');
+      
+      let games;
+      let dataExibicao;
+      
+      if (dataCustom) {
+        // Buscar jogos de data específica (formato DD-MM-YYYY)
+        games = await getGamesByDate(dataCustom);
+        dataExibicao = dataCustom;
+      } else {
+        // Buscar jogos de hoje
+        games = await getGames();
+        dataExibicao = todayDateAPI();
       }
-    };
-    
-    carregarJogos();
-  }, [data.rawData]);
+      
+      setDataAtual(dataExibicao);
+      
+      // Formatar para exibição
+      const jogosFormatados = games.map(g => ({
+        time_casa: g.home.name,
+        time_fora: g.away.name,
+        horario: g.time,
+        campeonato: g.comp,
+        estadio: g.stadium,
+        brasao_casa: g.home.badge || 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?',
+        brasao_fora: g.away.badge || 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?',
+        canais: g.channels.join(' | ') || 'Sem transmissão',
+        status_text: g.status === 'live' ? 'Ao Vivo' : g.status === 'final' ? 'Encerrado' : 'Programado',
+        is_big_game: g.is_big_game,
+        placar: g.score,
+      }));
+      
+      setJogosDoDia(jogosFormatados);
+    } catch (error) {
+      console.error('Erro ao carregar jogos:', error);
+      setJogosDoDia([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (!data.hasGamesData) {
-    return (
-      <Card className="p-12 text-center bg-[#10182b] border-[#1e2a44]">
-        <Trophy className="w-16 h-16 text-[#8ea9d9] mx-auto mb-4" />
-        <h3 className="text-[#dbe4ff] text-xl mb-2">Dados de Jogos Não Disponíveis</h3>
-        <p className="text-[#8ea9d9]">
-          Carregue um arquivo Excel com as abas "Jogos" e "Conv x Jogos" para visualizar estas métricas
-        </p>
-      </Card>
-    );
-  }
+  // Carregar jogos de hoje ao montar
+  useEffect(() => {
+    carregarJogos();
+  }, []);
+
+  // Buscar jogos quando a data for selecionada no calendário
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
+    setSelectedDate(date);
+    
+    // Converter para formato DD-MM-YYYY
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}-${month}-${year}`;
+    
+    carregarJogos(dateStr);
+  };
 
   // 1️⃣ OVERVIEW - KPIs Principais
   const totalConversoes = data.conversoes || 0;
@@ -233,6 +258,94 @@ export function GamesView({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* 🎯 BUSCAR JOGOS */}
+      <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-[#EAF2FF] font-semibold flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#00BFFF]" />
+                Buscar Jogos
+              </h3>
+              {dataAtual && (
+                <p className="text-[#8ea9d9] text-xs mt-1">
+                  Exibindo jogos de: <span className="text-[#00BFFF] font-medium">{dataAtual}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedDate(new Date());
+                carregarJogos();
+              }}
+              disabled={isLoading}
+              className="bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] text-white border-0 hover:shadow-lg hover:shadow-[#00BFFF]/30 transition-all"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Jogos de Hoje
+            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={isLoading}
+                  className="bg-[#1A2035] border-[#2a3a54] text-[#EAF2FF] hover:bg-[#2a3a54] hover:border-[#00BFFF] transition-all h-9 min-w-[200px] justify-start"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 mr-2" />
+                  {selectedDate ? format(selectedDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione uma data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-[#0B0F18] border-[#1e2a44]" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={isLoading}
+                  locale={ptBR}
+                  className="rounded-md border-0"
+                  classNames={{
+                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    month: "space-y-4",
+                    caption: "flex justify-center pt-1 relative items-center text-[#EAF2FF]",
+                    caption_label: "text-sm font-medium",
+                    nav: "space-x-1 flex items-center",
+                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 text-[#EAF2FF]",
+                    nav_button_previous: "absolute left-1",
+                    nav_button_next: "absolute right-1",
+                    table: "w-full border-collapse space-y-1",
+                    head_row: "flex",
+                    head_cell: "text-[#8ea9d9] rounded-md w-9 font-normal text-[0.8rem]",
+                    row: "flex w-full mt-2",
+                    cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-[#00BFFF]/20 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-[#EAF2FF] hover:bg-[#1e2a44] rounded-md transition-colors",
+                    day_selected: "bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] text-white hover:bg-gradient-to-r hover:from-[#00BFFF] hover:to-[#7B5CFF] focus:bg-gradient-to-r focus:from-[#00BFFF] focus:to-[#7B5CFF]",
+                    day_today: "bg-[#1e2a44] text-[#00BFFF] font-bold",
+                    day_outside: "text-[#8ea9d9]/30 opacity-50",
+                    day_disabled: "text-[#8ea9d9]/20",
+                    day_range_middle: "aria-selected:bg-[#00BFFF]/20 aria-selected:text-[#EAF2FF]",
+                    day_hidden: "invisible",
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <div className="text-[#8ea9d9] text-xs hidden md:flex items-center gap-2 px-3 py-2 bg-[#1A2035]/50 rounded-lg border border-[#2a3a54]">
+              <CalendarIcon className="w-3.5 h-3.5" />
+              Clique no calendário para selecionar
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* 🎯 INSIGHTS INTELIGENTES */}
       <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
         <div className="flex items-center justify-between mb-4">
@@ -240,14 +353,6 @@ export function GamesView({ data }: Props) {
             <Sparkles className="w-5 h-5 text-[#00BFFF]" />
             Insights Inteligentes
           </h3>
-          <Button
-            size="sm"
-            onClick={() => window.location.reload()}
-            className="bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] text-white border-0 hover:shadow-lg hover:shadow-[#00BFFF]/30 transition-all"
-          >
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-            Atualizar Jogos
-          </Button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -356,179 +461,166 @@ export function GamesView({ data }: Props) {
         </div>
       </Card>
 
-      {/* GRID DE CONTEÚDO - 2 COLUNAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ⚽ JOGOS DE HOJE - LISTA COMPACTA */}
-        <Card className="p-6 bg-gradient-to-br from-[#0B0F18] via-[#0f1a2b] to-[#10182b] border-[#00BFFF]/30 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00BFFF] to-[#FF00CC] blur-lg opacity-60 animate-pulse"></div>
-              <div className="relative w-10 h-10 bg-gradient-to-br from-[#00BFFF] to-[#FF00CC] rounded-xl flex items-center justify-center shadow-lg">
+      {/* ⚽ JOGOS - CARDS PREMIUM */}
+      {jogosFiltrados.length > 0 && (
+        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#00BFFF] to-[#0090d4] rounded-xl flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-white" />
               </div>
+              <div>
+                <h3 className="text-[#dbe4ff] font-semibold">
+                  {isLoading ? 'Carregando jogos...' : 'Jogos'}
+                </h3>
+                <p className="text-[#8ea9d9] text-xs">
+                  {isLoading ? 'Aguarde...' : `${jogosFiltrados.length} partidas ${dataAtual ? 'em ' + dataAtual : 'encontradas'}`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-white font-semibold">Jogos de Hoje</h3>
-              <p className="text-white/70 text-xs">
-                {jogosFiltrados.length} jogos • {filtroCategoria === 'brasileiros' ? '🇧🇷 Times Brasileiros' : 
-                 filtroCategoria === 'todos' ? 'Todos' :
-                 filtroCategoria === 'serieA' ? 'Série A' :
-                 filtroCategoria === 'serieB' ? 'Série B' :
-                 filtroCategoria === 'copa' ? 'Copas' : '🌍 Internacional'}
-              </p>
+
+            {/* Filtros */}
+            <div className="flex gap-2">
+              {(['todos', 'brasileiros', 'internacional', 'copa'] as const).map((filtro) => (
+                <button
+                  key={filtro}
+                  onClick={() => setFiltroCategoria(filtro)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    filtroCategoria === filtro
+                      ? 'bg-[#00BFFF]/20 text-[#00BFFF] border border-[#00BFFF]/30'
+                      : 'bg-[#1A2035] text-[#8ea9d9] border border-[#2a3a54] hover:border-[#00BFFF]/20'
+                  }`}
+                >
+                  {filtro === 'todos' ? 'Todos' : filtro === 'brasileiros' ? 'Brasileiros' : filtro === 'internacional' ? 'Internacional' : 'Copas'}
+                </button>
+              ))}
             </div>
           </div>
 
-          {jogosFiltrados.length > 0 ? (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-              {jogosFiltrados.slice(0, 10).map((jogo, idx) => (
-                <div 
-                  key={idx}
-                  className={`group relative flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${
-                    jogo.is_big_game
-                      ? 'bg-gradient-to-r from-[#00BFFF]/15 to-[#7B5CFF]/15 border-[#00BFFF]/50 hover:border-[#7B5CFF]/70 hover:shadow-lg hover:shadow-[#7B5CFF]/30'
-                      : 'bg-[#1A2035]/50 border-[#2a3a54] hover:border-[#00BFFF]/50 hover:shadow-lg hover:shadow-[#00BFFF]/20'
-                  }`}
-                >
-                  {/* Hot Badge */}
-                  {jogo.is_big_game && (
-                    <div className="absolute -top-1 -right-1">
-                      <Badge className="bg-gradient-to-r from-[#FF00CC] to-[#ff4fd8] text-white text-[8px] px-1.5 py-0.5 shadow-lg">
-                        <Flame className="w-2.5 h-2.5" />
-                      </Badge>
-                    </div>
-                  )}
-
-                  {/* Horário */}
-                  <div className="flex flex-col items-center justify-center min-w-[60px] p-2 bg-gradient-to-br from-[#00BFFF]/20 to-[#00BFFF]/10 rounded-lg border border-[#00BFFF]/30">
-                    <span className="text-[#00BFFF] font-bold text-sm leading-none">{jogo.horario}</span>
-                    <span className="text-[#00BFFF]/60 text-[9px] mt-0.5">HOJE</span>
-                  </div>
-
-                  {/* Times */}
-                  <div className="flex-1 min-w-0">
-                    {/* Time Casa */}
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <img 
-                        src={jogo.brasao_casa} 
-                        alt={jogo.time_casa}
-                        className="w-5 h-5 object-contain"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                      <span className="text-[#EAF2FF] text-xs font-medium truncate group-hover:text-[#00BFFF] transition-colors">
-                        {jogo.time_casa}
-                      </span>
-                    </div>
-
-                    {/* Separador VS */}
-                    <div className="flex items-center gap-2 my-1">
-                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#2a3a54] to-transparent"></div>
-                      <span className="text-[#00BFFF] text-[9px] font-bold px-1.5 py-0.5 bg-[#00BFFF]/10 rounded">VS</span>
-                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#2a3a54] to-transparent"></div>
-                    </div>
-
-                    {/* Time Fora */}
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={jogo.brasao_fora} 
-                        alt={jogo.time_fora}
-                        className="w-5 h-5 object-contain"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                      <span className="text-[#EAF2FF] text-xs font-medium truncate group-hover:text-[#7B5CFF] transition-colors">
-                        {jogo.time_fora}
-                      </span>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="border-[#7B5CFF]/30 text-[#7B5CFF] text-[8px] px-1.5 py-0 h-4">
-                        <Trophy className="w-2.5 h-2.5 mr-0.5" />
-                        {jogo.campeonato.length > 20 ? jogo.campeonato.substring(0, 20) + '...' : jogo.campeonato}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Odds Mock */}
-                  <div className="flex flex-col gap-0.5 text-center min-w-[45px]">
-                    <span className="text-[#00d18f] text-[10px] font-bold">3,52</span>
-                    <span className="text-[#ffb64d] text-[10px] font-bold">3,37</span>
-                    <span className="text-[#ff4fd8] text-[10px] font-bold">2,72</span>
-                  </div>
-                </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="p-5 bg-[#0F172A] border-[#1e2a44] animate-pulse">
+                  <div className="h-24 bg-[#1A2035] rounded mb-4"></div>
+                  <div className="h-4 bg-[#1A2035] rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-[#1A2035] rounded w-1/2"></div>
+                </Card>
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <Trophy className="w-12 h-12 mx-auto mb-3 text-white/20" />
-              <p className="text-white/60 text-sm">Nenhum jogo encontrado</p>
-              <p className="text-white/40 text-xs mt-1">Altere os filtros ou período</p>
-            </div>
-          )}
-
-          {/* Footer Insight */}
-          {jogosFiltrados.length > 0 && (
-            <div className="mt-4 p-3 bg-gradient-to-r from-[#00BFFF]/10 to-[#7B5CFF]/10 rounded-lg border border-[#00BFFF]/20">
-              <p className="text-[#dbe4ff] text-xs flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#00BFFF]" />
-                <strong className="text-[#00BFFF]">Conversões aumentam +23.4%</strong> durante jogos importantes!
-              </p>
-            </div>
-          )}
-        </Card>
-
-        {/* 📊 TOP TIMES - RANKING */}
-        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#7B5CFF] to-[#5B3FCC] rounded-xl flex items-center justify-center">
-              <Award className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-[#dbe4ff] font-semibold">Top 10 Times</h3>
-              <p className="text-[#8ea9d9] text-xs">Ranking por conversões e performance</p>
-            </div>
-          </div>
-
-          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-            {topTimes.map((item, idx) => (
-              <div 
-                key={idx}
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-[#1A2035] to-[#121726] rounded-lg border border-[#2a3a54] hover:border-[#00BFFF]/50 transition-all duration-300 group"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {jogosFiltrados.map((jogo, idx) => (
+              <Card 
+                key={idx} 
+                className={`p-5 bg-[#0F172A] border-[#1e2a44] hover:border-[#00BFFF]/40 transition-all hover:shadow-lg hover:shadow-[#00BFFF]/10 ${
+                  jogo.is_big_game ? 'ring-1 ring-[#FF00CC]/30' : ''
+                }`}
               >
-                {/* Posição */}
-                <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${
-                  idx === 0 ? 'bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white' :
-                  idx === 1 ? 'bg-gradient-to-br from-[#C0C0C0] to-[#A8A8A8] text-white' :
-                  idx === 2 ? 'bg-gradient-to-br from-[#CD7F32] to-[#B87333] text-white' :
-                  'bg-[#1e2a44] text-[#8ea9d9]'
-                }`}>
-                  {idx + 1}
-                </div>
-
-                {/* Info Time */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[#EAF2FF] font-semibold text-sm truncate group-hover:text-[#00BFFF] transition-colors">
-                    {item.time}
-                  </p>
-                  <p className="text-[#8ea9d9] text-xs">
-                    {item.conversoes} conversões • {item.jogos} jogos
-                  </p>
-                </div>
-
-                {/* Métricas */}
-                <div className="flex flex-col items-end gap-1">
-                  <Badge className="bg-gradient-to-r from-[#00BFFF]/20 to-[#00BFFF]/10 text-[#00BFFF] border-[#00BFFF]/30 text-[10px] px-2 py-0">
-                    {item.taxaSucesso.toFixed(1)}% taxa
+                {/* Header do Card */}
+                <div className="flex items-center justify-between mb-4">
+                  <Badge className="bg-[#00BFFF]/10 text-[#00BFFF] border-[#00BFFF]/30 text-[10px]">
+                    {jogo.campeonato}
                   </Badge>
-                  <span className="text-[#8ea9d9] text-[9px]">
-                    {item.percentual.toFixed(1)}% do total
-                  </span>
+                  {jogo.is_big_game && (
+                    <Badge className="bg-[#FF00CC]/10 text-[#FF00CC] border-[#FF00CC]/30 text-[10px] flex items-center gap-1">
+                      <Flame className="w-3 h-3" />
+                      Destaque
+                    </Badge>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
+
+                {/* Times */}
+                <div className="flex items-center justify-between mb-4">
+                  {/* Time Casa */}
+                  <div className="flex flex-col items-center flex-1">
+                    <img 
+                      src={jogo.brasao_casa} 
+                      alt={jogo.time_casa}
+                      className="w-12 h-12 mb-2 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?';
+                      }}
+                    />
+                    <span className="text-[#dbe4ff] text-sm font-medium text-center line-clamp-2">
+                      {jogo.time_casa}
+                    </span>
+                  </div>
+
+                  {/* VS + Horário */}
+                  <div className="flex flex-col items-center mx-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00BFFF]/20 to-[#FF00CC]/20 border border-[#00BFFF]/30 flex items-center justify-center mb-2">
+                      <span className="text-[#00BFFF] font-bold text-xs">VS</span>
+                    </div>
+                    {jogo.horario && (
+                      <span className="text-[#8ea9d9] text-xs font-medium">{jogo.horario}</span>
+                    )}
+                  </div>
+
+                  {/* Time Fora */}
+                  <div className="flex flex-col items-center flex-1">
+                    <img 
+                      src={jogo.brasao_fora} 
+                      alt={jogo.time_fora}
+                      className="w-12 h-12 mb-2 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/64/1e2a44/8ea9d9?text=?';
+                      }}
+                    />
+                    <span className="text-[#dbe4ff] text-sm font-medium text-center line-clamp-2">
+                      {jogo.time_fora}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Informações Adicionais */}
+                <div className="pt-4 border-t border-[#1e2a44] space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-[#8ea9d9]">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="truncate">{jogo.estadio}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#8ea9d9]">
+                    <Wifi className="w-3.5 h-3.5" />
+                    <span className="truncate">{jogo.canais}</span>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="mt-3 flex items-center justify-center">
+                  <Badge 
+                    className={`text-[10px] ${
+                      jogo.status_text === 'Ao Vivo'
+                        ? 'bg-[#00d18f]/10 text-[#00d18f] border-[#00d18f]/30 animate-pulse'
+                        : 'bg-[#8ea9d9]/10 text-[#8ea9d9] border-[#8ea9d9]/30'
+                    }`}
+                  >
+                    {jogo.status_text}
+                  </Badge>
+                </div>
+              </Card>
+              ))}
+            </div>
+          )}
         </Card>
-      </div>
+      )}
+
+      {/* Mensagem quando não há jogos */}
+      {!isLoading && jogosFiltrados.length === 0 && (
+        <Card className="p-12 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] text-center">
+          <AlertCircle className="w-16 h-16 text-[#8ea9d9] mx-auto mb-4 opacity-50" />
+          <h3 className="text-[#dbe4ff] text-xl mb-2">Nenhum jogo encontrado</h3>
+          <p className="text-[#8ea9d9] mb-4">
+            Não há jogos programados para {dataAtual || 'esta data'}
+          </p>
+          <Button
+            size="sm"
+            onClick={() => carregarJogos()}
+            className="bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] text-white border-0"
+          >
+            <Calendar className="w-3.5 h-3.5 mr-1.5" />
+            Ver Jogos de Hoje
+          </Button>
+        </Card>
+      )}
 
       {/* RESTO DOS GRÁFICOS... */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

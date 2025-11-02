@@ -1,6 +1,24 @@
-# 📊 IPTV Analytics Dashboard
+# 📊 IPTV Analytics Dashboard - AutonomyX
 
 Dashboard analytics profissional para gestão de clientes IPTV com processamento automático de arquivos Excel e análise avançada de métricas.
+
+## ⚡ LOGIN RÁPIDO (Desenvolvimento)
+
+**Acesso instantâneo sem API:**
+
+```bash
+# 1. Inicie o projeto
+npm run dev
+
+# 2. Na tela de login:
+Clique no botão dourado "Acesso Admin"
+
+# OU digite:
+Username: admin
+Password: admin123
+```
+
+📚 **Documentação completa:** [START_HERE.md](./START_HERE.md) | [TODOS_OS_ARQUIVOS_LOGIN.md](./TODOS_OS_ARQUIVOS_LOGIN.md)
 
 ## 🚀 Funcionalidades
 

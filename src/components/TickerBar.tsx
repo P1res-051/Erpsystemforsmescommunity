@@ -122,14 +122,12 @@ export function TickerBar({ data }: TickerBarProps) {
         className="ticker-bar"
         style={{
           background: 'linear-gradient(90deg, #0B0F18, #121726, #0B0F18)',
-          borderTop: '1px solid rgba(0, 191, 255, 0.25)',
-          borderBottom: '1px solid rgba(255, 0, 204, 0.15)',
           boxShadow: '0 0 15px rgba(0, 191, 255, 0.1)',
           display: 'flex',
           alignItems: 'center',
           position: 'relative',
           height: '46px',
-          paddingTop: '2px',
+          paddingTop: '5px',
           overflow: 'hidden',
         }}
       >

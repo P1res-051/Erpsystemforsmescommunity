@@ -1,8 +1,13 @@
 import { Card } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { FacebookAdsCalendar } from './FacebookAdsCalendar';
+import { TrafficAnalytics } from './TrafficAnalytics';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
+import { TimelineCard3D } from './TimelineCard3D';
+import { PerformanceAnalyticsCard } from './PerformanceAnalyticsCard';
+import { CompactKPICard } from './CompactKPICard';
 import { 
   DollarSign, 
   Users, 
@@ -10,6 +15,7 @@ import {
   ArrowDownCircle, 
   TrendingUp,
   Calendar,
+  CalendarCheck,
   AlertTriangle,
   MessageCircle,
   Mail,
@@ -21,7 +27,9 @@ import {
   TrendingDown,
   Percent,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -46,6 +54,7 @@ import { useState, useEffect, useRef } from 'react';
 
 interface Props {
   data: DashboardData;
+  daysToShow?: number; // Prop para controlar quantos dias mostrar (padrão: 7)
 }
 
 interface DayData {
@@ -63,6 +72,7 @@ interface DayData {
   isToday: boolean;
   isFuture: boolean;
   isPast: boolean;
+  isProjected?: boolean; // Para diferenciar projeções
 }
 
 // Função para formatar valores em k (milhares) com 1 casa decimal
@@ -71,6 +81,27 @@ const formatK = (value: number): string => {
     return `${(value / 1000).toFixed(1)}k`;
   }
   return value.toFixed(0);
+};
+
+// Formatação BRL completa
+const formatBRL = (value: number): string => {
+  return 'R$ ' + (value || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+};
+
+// Formatação compacta para eixos Y
+const formatBRLCompact = (value: number): string => {
+  if (value >= 1000) {
+    return `R$ ${(value / 1000).toFixed(1)}k`;
+  }
+  return `R$ ${value.toFixed(0)}`;
+};
+
+// Formatação de dia curto
+const formatDayShort = (day: number): string => {
+  return day.toString().padStart(2, '0');
 };
 
 // Paleta de cores AutonomyX
@@ -94,11 +125,22 @@ type ViewSection = 'detalhamento' | 'historico-ganhos' | 'desempenho-comercial' 
 
 type PeriodoFiltro = '7d' | '30d' | '90d' | 'personalizado';
 
-export function FinancialView({ data }: Props) {
+export function FinancialView({ data, daysToShow = 7 }: Props) {
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const [activeSection, setActiveSection] = useState<ViewSection>('detalhamento');
   const [periodoFiltro, setPeriodoFiltro] = useState<PeriodoFiltro>('30d');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [facebookSpends, setFacebookSpends] = useState<{ [date: string]: number }>({});
+  const [showAllDays, setShowAllDays] = useState(false); // Controla exibição de todos os dias
+  const [isMobile, setIsMobile] = useState(false); // Detecta mobile
+  // const scrollContainerRef = useRef<HTMLDivElement>(null); // Não usado mais
+
+  // Detectar mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Resumo do dia (simulado baseado nos dados disponíveis)
   const receitaHoje = Math.round(data.receitaMensal / 30);
@@ -117,15 +159,15 @@ export function FinancialView({ data }: Props) {
   const perdasOntem = Math.round(perdasHoje * 1.15);
   const variacaoPerdasPct = (((perdasHoje - perdasOntem) / perdasOntem) * 100).toFixed(1);
 
-  // Calendário financeiro - 15 passados + hoje + 15 futuros = 31 dias total
+  // Calendário financeiro - 90 passados + hoje + 29 futuros = 120 dias total
   const today = new Date();
-  const calendarData: DayData[] = Array.from({ length: 31 }, (_, i) => {
+  const calendarData: DayData[] = Array.from({ length: 120 }, (_, i) => {
     const date = new Date();
-    const offset = i - 15;
+    const offset = i - 90; // 90 dias no passado
     date.setDate(date.getDate() + offset);
     
     const baseReceita = data.receitaMensal / 30;
-    const variation = (Math.sin((i - 15) / 3) * 0.2 + 1);
+    const variation = (Math.sin((i - 90) / 3) * 0.2 + 1);
     const isFuture = offset > 0;
     const isToday = offset === 0;
     const isPast = offset < 0;
@@ -163,22 +205,22 @@ export function FinancialView({ data }: Props) {
     }
   }, []);
 
-  // Scroll automático para centralizar o dia atual
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const todayIndex = 15;
-      const cardWidth = 96 + 8;
-      const scrollPosition = (todayIndex * cardWidth) - (container.clientWidth / 2) + (cardWidth / 2);
-      
-      setTimeout(() => {
-        container.scrollTo({
-          left: scrollPosition,
-          behavior: 'smooth'
-        });
-      }, 100);
-    }
-  }, []);
+  // Scroll automático para centralizar o dia atual (desabilitado - scroll manual)
+  // useEffect(() => {
+  //   if (scrollContainerRef.current) {
+  //     const container = scrollContainerRef.current;
+  //     const todayIndex = 90; // Ajustado para novo offset
+  //     const cardWidth = 108 + 10; // Novo tamanho + gap
+  //     const scrollPosition = (todayIndex * cardWidth) - (container.clientWidth / 2) + (cardWidth / 2);
+  //     
+  //     setTimeout(() => {
+  //       container.scrollTo({
+  //         left: scrollPosition,
+  //         behavior: 'smooth'
+  //       });
+  //     }, 100);
+  //   }
+  // }, []);
 
   // Dados para o sparkline de projeção +7d do dia selecionado
   const sparklineData = selectedDay ? Array.from({ length: 7 }, (_, i) => {
@@ -322,39 +364,118 @@ export function FinancialView({ data }: Props) {
     setSelectedDay(day);
   };
 
-  // Dados históricos para gráficos de ganhos
-  const historicoGanhos = Array.from({ length: parseInt(periodoFiltro) || 30 }, (_, i) => {
+  // Dados históricos para gráficos de ganhos com cálculos CORRETOS e DATAS REAIS
+  const historicoGanhos = (() => {
+    const days = parseInt(periodoFiltro) || 30;
     const baseReceita = data.receitaMensal / 30;
-    const variation = (Math.sin(i / 3) * 0.2 + 1);
-    const receita = baseReceita * variation;
-    const perdas = (data.clientesExpirados || 0) / 30 * (data.ticketMedio || 30) * variation;
-    const novosClientes = Math.round(receita / (data.ticketMedio || 30) * 0.3);
-    const renovacoes = Math.round(receita * 0.4);
+    const ticketMedio = data.ticketMedio || 30;
+    let acumuladoAtual = 0;
     
-    return {
-      dia: i + 1,
-      receita: receita,
-      lucro: receita - perdas,
-      perdas: perdas,
-      novosClientes: novosClientes,
-      renovacoes: renovacoes,
-      ganhos: receita - renovacoes,
-      acumulado: receita * (i + 1) / 2,
-    };
-  });
+    // Data de hoje
+    const hoje = new Date();
+    
+    return Array.from({ length: days }, (_, i) => {
+      const variation = (Math.sin(i / 3) * 0.2 + 1);
+      
+      // Calcular a data real (hoje - days + i)
+      const dataAtual = new Date(hoje);
+      dataAtual.setDate(hoje.getDate() - days + i + 1);
+      
+      // Formatação da data
+      const dia = dataAtual.getDate();
+      const mes = dataAtual.getMonth() + 1;
+      const diaFormatado = `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}`;
+      const dataCompleta = dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      
+      // Cálculo correto separando novos e renovações
+      const totalDia = baseReceita * variation;
+      const renovacaoDia = Math.round(totalDia * 0.65); // 65% são renovações
+      const novoDia = Math.round(totalDia * 0.35); // 35% são novos clientes
+      const perdaDia = (data.clientesExpirados || 0) / 30 * ticketMedio * variation * 0.15; // 15% de perda
+      
+      // Receita real do dia (novos + renovações)
+      const receitaDia = novoDia + renovacaoDia;
+      const lucroDia = receitaDia - perdaDia;
+      
+      // Acumulado correto
+      acumuladoAtual += lucroDia;
+      
+      return {
+        dia: dia,
+        diaFormatado: diaFormatado,
+        dataCompleta: dataCompleta,
+        dataObj: dataAtual,
+        receita: receitaDia,
+        renovacao: renovacaoDia,
+        novo: novoDia,
+        perda: perdaDia,
+        lucro: lucroDia,
+        novosClientes: Math.round(novoDia / ticketMedio),
+        renovacoes: renovacaoDia,
+        ganhos: novoDia,
+        perdas: perdaDia,
+        acumulado: acumuladoAtual,
+      };
+    });
+  })();
 
   // Cálculos de performance comercial
   const ltv = (data.ticketMedio || 30) * 4.2; // Média de 4.2 renovações
+  const ltvAnterior = ltv * 0.95; // LTV do período anterior
   const cac = 9.20;
   const roi = ltv / cac;
+  const roiAnterior = ltvAnterior / cac;
   const churnRate = ((data.clientesExpirados || 0) / ((data.clientesAtivos || 0) + (data.clientesExpirados || 0))) * 100;
+  const churnAnterior = churnRate * 1.08;
   
   const funnelData = [
-    { etapa: 'Acessos', valor: 1000, taxa: 100 },
-    { etapa: 'Testes', valor: 380, taxa: 38 },
-    { etapa: 'Conversões', valor: 106, taxa: 10.6 },
-    { etapa: 'Renovação', valor: 73, taxa: 7.3 },
+    { etapa: 'Acessos', valor: 1000, taxa: 100, cor: COLORS.ativos },
+    { etapa: 'Testes', valor: 380, taxa: 38, cor: COLORS.renovacoes },
+    { etapa: 'Conversões', valor: 106, taxa: 10.6, cor: COLORS.receita },
+    { etapa: 'Renovação', valor: 73, taxa: 7.3, cor: COLORS.dourado },
   ];
+  
+  // Dados de LTV ao longo do tempo
+  const ltvHistorico = Array.from({ length: 6 }, (_, i) => {
+    const mes = new Date();
+    mes.setMonth(mes.getMonth() - 5 + i);
+    return {
+      mes: mes.toLocaleDateString('pt-BR', { month: 'short' }),
+      mesCompleto: mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      ltv: ltv * (0.8 + (i * 0.04)),
+      prevLtv: ltv * (0.75 + (i * 0.04))
+    };
+  });
+  
+  // Insights automáticos
+  const insights = [];
+  if (roi > roiAnterior) {
+    insights.push({
+      tipo: 'positivo',
+      icone: '📈',
+      mensagem: `Seu ROI cresceu ${((roi - roiAnterior) / roiAnterior * 100).toFixed(1)}% em relação ao período anterior.`
+    });
+  }
+  if (churnRate > 40) {
+    insights.push({
+      tipo: 'alerta',
+      icone: '⚠️',
+      mensagem: 'CHURN acima de 40% — reveja planos, benefícios e comunicação com clientes.'
+    });
+  } else if (churnRate < 10) {
+    insights.push({
+      tipo: 'positivo',
+      icone: '✅',
+      mensagem: 'Excelente! Churn abaixo de 10% indica alta satisfação dos clientes.'
+    });
+  }
+  if (ltv > 100) {
+    insights.push({
+      tipo: 'positivo',
+      icone: '💰',
+      mensagem: `LTV de R$ ${ltv.toFixed(0)} indica clientes valiosos. Invista em retenção!`
+    });
+  }
 
   // Menu de navegação lateral reorganizado
   const menuSections = [
@@ -380,8 +501,7 @@ export function FinancialView({ data }: Props) {
       id: 'trafego-custos' as ViewSection, 
       label: 'Tráfego e Custos', 
       icon: DollarSign,
-      description: 'Investimento em Ads (standby)',
-      badge: 'Em breve'
+      description: 'Facebook Ads e análise de ROI'
     },
     { 
       id: 'retencao-perdas' as ViewSection, 
@@ -472,167 +592,275 @@ export function FinancialView({ data }: Props) {
           .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(to right, #2980b9, #27ae60);
           }
+
+          .timeline-header {
+            height: 46px;
+            background: #0B0F18;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.02);
+          }
+
+          .timeline-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .timeline-title {
+            font-size: 14px;
+            color: #EAF2FF;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .timeline-subtitle {
+            font-size: 12px;
+            color: #7A8AAE;
+          }
+
+          .timeline-filters {
+            display: flex;
+            gap: 6px;
+          }
+
+          .filter-pill {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #233047;
+            color: #CCD7EE;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+
+          .filter-pill:hover {
+            background: rgba(255,255,255,0.04);
+            border-color: #2d3f5f;
+          }
+
+          .filter-pill.active {
+            background: rgba(0,232,148,0.12);
+            border-color: #00E894;
+            color: #00E894;
+          }
+
+          .timeline {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0 14px;
+            min-height: 150px;
+            overflow-x: auto;
+          }
+
+          .timeline::-webkit-scrollbar {
+            height: 6px;
+          }
+          
+          .timeline::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+            border-radius: 3px;
+          }
+          
+          .timeline::-webkit-scrollbar-thumb {
+            background: rgba(0,232,148,0.3);
+            border-radius: 3px;
+          }
+          
+          .timeline::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,232,148,0.5);
+          }
         `}</style>
 
-        {/* Timeline Financeira */}
-        <div>
-          <div className="mb-2">
-            <h2 className="text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5" style={{ color: COLORS.receitaNeon }} />
-              <span>Linha do Tempo Financeira</span>
-            </h2>
-            <p className="text-slate-500 text-sm mt-1">
-              {mesAtivo.charAt(0).toUpperCase() + mesAtivo.slice(1)} • Projeção até {mesFinal}
-            </p>
-          </div>
-          
-          <div 
-            ref={scrollContainerRef}
-            className="relative overflow-x-auto pb-3 custom-scrollbar"
-          >
-            <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
-              {calendarData.map((day, idx) => {
-                const isSelected = selectedDay?.date === day.date;
-                let borderColor = 'rgba(255,255,255,0.05)';
-                let bgColor = '#0c121d';
-                let shadowEffect = '';
-                let opacity = 1;
-                
-                if (isSelected) {
-                  borderColor = COLORS.receitaNeon;
-                  bgColor = 'rgba(60, 255, 172, 0.12)';
-                  shadowEffect = `shadow-[0_0_30px_rgba(60,255,172,0.6)]`;
-                } else if (day.isToday) {
-                  borderColor = COLORS.receitaNeon;
-                  bgColor = 'rgba(60, 255, 172, 0.08)';
-                  shadowEffect = `shadow-[0_0_25px_rgba(60,255,172,0.4)]`;
-                } else if (day.isFuture) {
-                  borderColor = COLORS.cianoClaro;
-                  bgColor = 'rgba(60, 255, 252, 0.05)';
-                  opacity = 0.4;
-                } else {
-                  borderColor = 'rgba(255,255,255,0.15)';
-                  bgColor = 'rgba(15,23,42,0.8)';
-                  opacity = 1;
-                }
-                
-                return (
-                  <Tooltip key={idx}>
-                    <TooltipTrigger asChild>
-                      <div
-                        onClick={() => handleDayClick(day)}
-                        className={`
-                          flex-shrink-0 w-24 px-3 py-3 rounded-lg cursor-pointer
-                          transition-all duration-200
-                          hover:scale-105 hover:shadow-2xl
-                          ${isSelected ? 'border-b-4' : 'border-2'}
-                          ${day.isToday && !isSelected ? shadowEffect : ''}
-                        `}
-                        style={{
-                          backgroundColor: bgColor,
-                          borderColor: borderColor,
-                          opacity,
-                          boxShadow: isSelected 
-                            ? `0 0 30px rgba(60, 255, 172, 0.6), inset 0 2px 4px rgba(255,255,255,0.1)` 
-                            : day.isToday 
-                              ? `0 0 25px rgba(60, 255, 172, 0.4), inset 0 2px 4px rgba(255,255,255,0.1)`
-                              : 'inset 0 1px 2px rgba(0,0,0,0.2)',
-                        }}
-                      >
-                        <div className="text-center mb-2 pb-2 border-b" style={{ borderColor: borderColor }}>
-                          <p className="text-slate-500 text-xs">{day.weekday}</p>
-                          <p 
-                            className="text-white text-lg" 
-                            style={{ 
-                              fontWeight: day.isToday || isSelected ? 700 : 600,
-                              color: day.isToday || isSelected ? COLORS.receitaNeon : '#fff'
-                            }}
-                          >
-                            {day.day}
-                          </p>
-                        </div>
-                        
-                        <div className="space-y-1.5 text-xs">
-                          <div className="flex flex-col">
-                            <span className="text-slate-500 text-[10px]">
-                              {day.isFuture ? 'Projeção' : 'Líquido'}
-                            </span>
-                            <span 
-                              style={{ 
-                                color: day.lucro > 0 ? COLORS.receita : COLORS.perdas,
-                                fontWeight: 600 
-                              }}
-                            >
-                              {formatK(day.lucro)}
-                            </span>
-                          </div>
-                          
-                          <div className="flex flex-col">
-                            <span className="text-slate-500 text-[10px]">Renov.</span>
-                            <span style={{ color: COLORS.renovacoes, fontWeight: 600 }}>
-                              +{day.renovacoes}
-                            </span>
-                          </div>
-                          
-                          <div className="flex flex-col">
-                            <span className="text-slate-500 text-[10px]">Perdas</span>
-                            <span style={{ color: COLORS.perdas, fontWeight: 600 }}>
-                              -{day.perdas}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent 
-                      side="bottom" 
-                      style={{ 
-                        backgroundColor: COLORS.fundo,
-                        borderColor: day.isToday || isSelected ? COLORS.receitaNeon : COLORS.cianoClaro 
-                      }}
-                    >
-                      <div className="space-y-1 text-xs">
-                        <p className="text-white" style={{ fontWeight: 600 }}>
-                          {day.weekday} {day.day} de {day.month}
-                          {day.isFuture && <span className="text-cyan-400 ml-2">(Previsão)</span>}
-                        </p>
-                        <p style={{ color: COLORS.receita }}>
-                          {day.isFuture ? 'Previsto: ' : 'Receita: '}
-                          R$ {day.receita.toLocaleString('pt-BR')}
-                        </p>
-                        <p style={{ color: COLORS.renovacoes }}>
-                          Renovações: {day.renovacoes}
-                        </p>
-                        <p style={{ color: COLORS.perdas }}>
-                          Perdas: {day.perdas}
-                        </p>
-                        <p className="text-white pt-1 border-t border-slate-700">
-                          Lucro: R$ {day.lucro.toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
+        {/* CABEÇALHO DA SEÇÃO */}
+        <div className="timeline-header">
+          <div>
+            <div className="timeline-title">
+              <Calendar className="w-4 h-4" style={{ color: '#00E894' }} />
+              Linha do tempo financeira
             </div>
+            <div className="timeline-subtitle">
+              {periodoFiltro === '7d' && 'Últimos 7 dias'}
+              {periodoFiltro === '30d' && 'Últimos 30 dias'}
+              {periodoFiltro === '90d' && 'Últimos 90 dias'}
+            </div>
+          </div>
+          <div className="timeline-filters">
+            <button className={`filter-pill ${periodoFiltro === '7d' ? 'active' : ''}`} onClick={() => setPeriodoFiltro('7d')}>
+              7d
+            </button>
+            <button className={`filter-pill ${periodoFiltro === '30d' ? 'active' : ''}`} onClick={() => setPeriodoFiltro('30d')}>
+              30d
+            </button>
+            <button className={`filter-pill ${periodoFiltro === '90d' ? 'active' : ''}`} onClick={() => setPeriodoFiltro('90d')}>
+              90d
+            </button>
+          </div>
+        </div>
+
+        {/* FAIXA DE DIAS */}
+        <div style={{ marginBottom: '24px' }}>
+          <div className="timeline">
+            {(() => {
+              // Definir quantos dias mostrar baseado no filtro
+              const daysToDisplay = periodoFiltro === '7d' ? 7 : periodoFiltro === '30d' ? 30 : 90;
+              const displayData = calendarData.slice(-daysToDisplay);
+              
+              return displayData.map((day, idx) => (
+                <TimelineCard3D
+                  key={day.date}
+                  weekday={day.weekday}
+                  day={day.day}
+                  month={day.month}
+                  liquido={day.lucro}
+                  renov={day.renovacoes}
+                  perdas={day.perdas}
+                  isToday={day.isToday}
+                  isFuture={day.isFuture}
+                />
+              ));
+            })()}
+          </div>
+        </div>
+
+        {/* Seção KPIs Principais - Layout Moderno */}
+        <div className="space-y-6 mt-6">
+          {/* Linha de KPIs Compactos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <CompactKPICard
+              label="Receita Total"
+              value={formatBRL(data.receitaMensal)}
+              change="+12.4% vs mês anterior"
+              changeType="positive"
+              icon={DollarSign}
+              gradient="linear-gradient(135deg, #00ffa6 0%, #00bfff 100%)"
+            />
+            <CompactKPICard
+              label="Base Ativa"
+              value={data.clientesAtivos.toLocaleString('pt-BR')}
+              change="+18 novos hoje"
+              changeType="positive"
+              icon={Users}
+              gradient="linear-gradient(135deg, #a48bff 0%, #7b5cff 100%)"
+            />
+            <CompactKPICard
+              label="Taxa de Retenção"
+              value={`${(((data.clientesAtivos || 0) / ((data.clientesAtivos || 0) + (data.clientesExpirados || 0))) * 100).toFixed(1)}%`}
+              change="+2.1% essa semana"
+              changeType="positive"
+              icon={RefreshCw}
+              gradient="linear-gradient(135deg, #ff00cc 0%, #ff4a9a 100%)"
+            />
+            <CompactKPICard
+              label="Lucro Líquido"
+              value={formatBRL(data.receitaMensal - (data.clientesExpirados * (data.ticketMedio || 30)))}
+              change="-8 perdas hoje"
+              changeType="negative"
+              icon={TrendingUp}
+              gradient="linear-gradient(135deg, #ffd700 0%, #ffb700 100%)"
+            />
+          </div>
+
+          {/* Cards Analíticos - Estilo Performance Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <PerformanceAnalyticsCard
+              title="Performance de Receita"
+              icon={TrendingUp}
+              gradient="linear-gradient(to right, #00ffa6, #00bfff)"
+              isLive
+              metrics={[
+                {
+                  label: 'Hoje',
+                  value: formatBRL(receitaHoje),
+                  change: '+12.3%',
+                  changeColor: '#22e3af',
+                },
+                {
+                  label: 'Renovações',
+                  value: renovacoesHoje.toString(),
+                  change: '+8.1%',
+                  changeColor: '#22e3af',
+                },
+              ]}
+              chartData={historicoGanhos.slice(-7).map(d => ({ value: d.receita }))}
+              action={{
+                label: 'Ver Detalhes',
+                onClick: () => setActiveSection('detalhamento'),
+              }}
+            />
+
+            <PerformanceAnalyticsCard
+              title="Análise de Clientes"
+              icon={Users}
+              gradient="linear-gradient(to right, #a48bff, #7b5cff)"
+              isLive
+              metrics={[
+                {
+                  label: 'Ativos',
+                  value: data.clientesAtivos.toLocaleString('pt-BR'),
+                  change: '+24 hoje',
+                  changeColor: '#22e3af',
+                },
+                {
+                  label: 'Churn Rate',
+                  value: `${churnRate.toFixed(1)}%`,
+                  change: '-1.2%',
+                  changeColor: '#22e3af',
+                },
+              ]}
+              chartData={historicoGanhos.slice(-7).map(d => ({ value: d.novosClientes }))}
+              action={{
+                label: 'Ver Relatório',
+                onClick: () => {},
+              }}
+            />
+
+            <PerformanceAnalyticsCard
+              title="Retenção & Crescimento"
+              icon={Activity}
+              gradient="linear-gradient(to right, #ff00cc, #ff4a9a)"
+              metrics={[
+                {
+                  label: 'LTV Médio',
+                  value: `R$ ${ltv.toFixed(0)}`,
+                  change: '+5.2%',
+                  changeColor: '#22e3af',
+                },
+                {
+                  label: 'ROI',
+                  value: `${roi.toFixed(1)}x`,
+                  change: '+0.8x',
+                  changeColor: '#22e3af',
+                },
+              ]}
+              chartData={ltvHistorico.map(d => ({ value: d.ltv }))}
+              action={{
+                label: 'Analisar',
+                onClick: () => setActiveSection('desempenho-comercial'),
+              }}
+            />
           </div>
         </div>
 
         {/* Layout Principal: Menu Lateral + Conteúdo */}
-        <div className="flex gap-6">
+        <div className="flex gap-6 mt-6">
           {/* Menu Lateral de Navegação */}
           <Card 
-            className="w-72 flex-shrink-0 border-[rgba(255,255,255,0.05)] h-fit sticky top-4"
-            style={{ 
-              backgroundColor: '#0E1321',
-              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.05)'
-            }}
+            className="w-72 flex-shrink-0 border-[#1e2a44] h-fit sticky top-4 bg-gradient-to-br from-[#10182b] to-[#0b0f19] shadow-2xl"
           >
             <div className="p-4">
-              <div className="mb-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <h3 className="text-white text-sm mb-1" style={{ fontWeight: 600 }}>
+              <div className="mb-4 pb-3 border-b border-[#1e2a44]">
+                <h3 className="text-[#EAF2FF] text-sm mb-1" style={{ fontWeight: 600 }}>
                   Gestão Financeira
                 </h3>
-                <p className="text-slate-500 text-xs">
+                <p className="text-[#8ea9d9] text-xs">
                   Centro de Performance
                 </p>
               </div>
@@ -701,9 +929,8 @@ export function FinancialView({ data }: Props) {
             {/* Seção: Detalhamento */}
             {activeSection === 'detalhamento' && selectedDay && (
               <Card 
-                className="border-2"
+                className="border-2 bg-gradient-to-br from-[#10182b] to-[#0b0f19]"
                 style={{ 
-                  backgroundColor: '#0c121d',
                   borderColor: selectedDay.isToday ? COLORS.receitaNeon : COLORS.ativos,
                   boxShadow: `0 0 30px ${selectedDay.isToday ? COLORS.receitaNeon : COLORS.ativos}40`
                 }}
@@ -715,11 +942,11 @@ export function FinancialView({ data }: Props) {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <Calendar className="w-5 h-5" style={{ color: COLORS.receitaNeon }} />
-                          <h3 className="text-white text-xl" style={{ fontWeight: 700 }}>
+                          <h3 className="text-[#EAF2FF] text-xl" style={{ fontWeight: 700 }}>
                             📆 {selectedDay.day} de {selectedDay.month}
                           </h3>
                         </div>
-                        <p className="text-slate-400 text-sm">
+                        <p className="text-[#8ea9d9] text-sm">
                           {selectedDay.weekday} • {selectedDay.isFuture ? 'Projeção Estimada' : 'Dados Reais'}
                         </p>
                       </div>
@@ -770,16 +997,16 @@ export function FinancialView({ data }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Coluna 1: Resumo Financeiro */}
                     <div>
-                      <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-4">
+                      <p className="text-[#8ea9d9] text-[10px] uppercase tracking-wider mb-4">
                         💰 Resumo Financeiro
                       </p>
                       <div className="space-y-4">
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <DollarSign className="w-3.5 h-3.5" style={{ color: COLORS.receita }} />
-                            <span className="text-slate-500 text-[11px]">Receita Total</span>
+                            <span className="text-[#8ea9d9] text-[11px]">Receita Total</span>
                           </div>
-                          <p className="text-white text-3xl" style={{ fontWeight: 700 }}>
+                          <p className="text-[#EAF2FF] text-3xl" style={{ fontWeight: 700 }}>
                             R$ {selectedDay.receita.toLocaleString('pt-BR')}
                           </p>
                         </div>
@@ -787,9 +1014,9 @@ export function FinancialView({ data }: Props) {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <RefreshCw className="w-3.5 h-3.5" style={{ color: COLORS.renovacoes }} />
-                            <span className="text-slate-500 text-[11px]">Renovações</span>
+                            <span className="text-[#8ea9d9] text-[11px]">Renovações</span>
                           </div>
-                          <p className="text-white text-4xl" style={{ fontWeight: 700 }}>
+                          <p className="text-[#EAF2FF] text-4xl" style={{ fontWeight: 700 }}>
                             {selectedDay.renovacoes}
                           </p>
                         </div>
@@ -797,9 +1024,9 @@ export function FinancialView({ data }: Props) {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <ArrowDownCircle className="w-3.5 h-3.5" style={{ color: COLORS.perdas }} />
-                            <span className="text-slate-500 text-[11px]">Perdas</span>
+                            <span className="text-[#8ea9d9] text-[11px]">Perdas</span>
                           </div>
-                          <p className="text-white text-4xl" style={{ fontWeight: 700 }}>
+                          <p className="text-[#EAF2FF] text-4xl" style={{ fontWeight: 700 }}>
                             {selectedDay.perdas}
                           </p>
                         </div>
@@ -809,7 +1036,7 @@ export function FinancialView({ data }: Props) {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <TrendingUp className="w-3.5 h-3.5" style={{ color: COLORS.receitaNeon }} />
-                            <span className="text-slate-500 text-[11px]">Lucro Líquido</span>
+                            <span className="text-[#8ea9d9] text-[11px]">Lucro Líquido</span>
                           </div>
                           <p 
                             className="text-4xl"
@@ -825,9 +1052,9 @@ export function FinancialView({ data }: Props) {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <Activity className="w-3.5 h-3.5" style={{ color: COLORS.ativos }} />
-                            <span className="text-slate-500 text-[11px]">Ticket Médio</span>
+                            <span className="text-[#8ea9d9] text-[11px]">Ticket Médio</span>
                           </div>
-                          <p className="text-white text-2xl" style={{ fontWeight: 600 }}>
+                          <p className="text-[#EAF2FF] text-2xl" style={{ fontWeight: 600 }}>
                             R$ {selectedDay.ticketMedio.toFixed(0)}
                           </p>
                         </div>
@@ -836,7 +1063,7 @@ export function FinancialView({ data }: Props) {
 
                     {/* Coluna 2: Clientes e Status */}
                     <div>
-                      <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-4">
+                      <p className="text-[#8ea9d9] text-[10px] uppercase tracking-wider mb-4">
                         👥 Clientes e Status
                       </p>
                       <div className="space-y-3">
@@ -1061,11 +1288,11 @@ export function FinancialView({ data }: Props) {
                 {/* Filtros Temporais */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-white flex items-center gap-2">
+                    <h2 className="text-[#EAF2FF] flex items-center gap-2">
                       <BarChart3 className="w-5 h-5" style={{ color: COLORS.receitaNeon }} />
                       <span>Histórico de Ganhos</span>
                     </h2>
-                    <p className="text-slate-500 text-sm mt-1">
+                    <p className="text-[#8ea9d9] text-sm mt-1">
                       Análise temporal de receita e lucro
                     </p>
                   </div>
@@ -1173,15 +1400,14 @@ export function FinancialView({ data }: Props) {
 
                 {/* Gráfico: Evolução de Receita e Lucro */}
                 <div>
-                  <h3 className="text-white mb-2 text-sm" style={{ fontWeight: 600 }}>
+                  <h3 className="text-[#EAF2FF] mb-2 text-sm" style={{ fontWeight: 600 }}>
                     📈 Evolução de Receita e Lucro
                   </h3>
-                  <p className="text-slate-500 text-xs mb-4">
+                  <p className="text-[#8ea9d9] text-xs mb-4">
                     💡 Acompanhe quanto você faturou (receita) e quanto sobrou descontando as perdas (lucro)
                   </p>
                   <Card 
-                    className="p-6 border-[rgba(255,255,255,0.05)]"
-                    style={{ backgroundColor: '#0E1321' }}
+                    className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl"
                   >
                     <ResponsiveContainer width="100%" height={300}>
                       <AreaChart data={historicoGanhos}>
@@ -1197,24 +1423,34 @@ export function FinancialView({ data }: Props) {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                         <XAxis 
-                          dataKey="dia" 
-                          stroke="#E9EDF1"
-                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                          label={{ value: 'Dia do Mês', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
+                          dataKey="diaFormatado" 
+                          stroke="#8ea9d9"
+                          tick={{ fill: '#8ea9d9', fontSize: 10 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={70}
+                          interval="preserveStartEnd"
                         />
                         <YAxis 
-                          stroke="#E9EDF1"
-                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                          tickFormatter={(value) => `R$ ${formatK(value)}`}
-                          label={{ value: 'Receita (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
+                          stroke="#8ea9d9"
+                          tick={{ fill: '#8ea9d9', fontSize: 11 }}
+                          tickFormatter={formatBRLCompact}
                         />
                         <RechartsTooltip 
                           contentStyle={{ 
-                            backgroundColor: '#0E1321',
-                            border: `1px solid rgba(0,255,170,0.2)`,
-                            borderRadius: '8px'
+                            backgroundColor: '#0f1621',
+                            border: '1px solid #1e2a44',
+                            borderRadius: '8px',
+                            color: '#EAF2FF'
                           }}
-                          formatter={(value: any) => [`R$ ${formatK(value)}`, '']}
+                          formatter={(value: any, name: string) => [formatBRL(value), name === 'receita' ? 'Receita' : 'Lucro']}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              const item = payload[0].payload;
+                              return `📅 ${item.dataCompleta}`;
+                            }
+                            return label;
+                          }}
                         />
                         <Area 
                           type="monotone" 
@@ -1222,7 +1458,7 @@ export function FinancialView({ data }: Props) {
                           stroke={COLORS.receitaNeon}
                           fill="url(#receitaGradient)"
                           strokeWidth={2}
-                          name="Receita"
+                          name="receita"
                         />
                         <Area 
                           type="monotone" 
@@ -1230,18 +1466,18 @@ export function FinancialView({ data }: Props) {
                           stroke={COLORS.ativos}
                           fill="url(#lucroGradient)"
                           strokeWidth={2}
-                          name="Lucro"
+                          name="lucro"
                         />
                       </AreaChart>
                     </ResponsiveContainer>
-                    <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-[#1e2a44]">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.receitaNeon }}></div>
-                        <span className="text-slate-400 text-xs">Receita</span>
+                        <span className="text-[#8ea9d9] text-xs">Receita</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.ativos }}></div>
-                        <span className="text-slate-400 text-xs">Lucro</span>
+                        <span className="text-[#8ea9d9] text-xs">Lucro</span>
                       </div>
                     </div>
                   </Card>
@@ -1251,95 +1487,141 @@ export function FinancialView({ data }: Props) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Balanço de Ganhos x Perdas x Novos */}
                   <div>
-                    <h3 className="text-white mb-2 text-sm" style={{ fontWeight: 600 }}>
+                    <h3 className="text-[#EAF2FF] mb-2 text-sm" style={{ fontWeight: 600 }}>
                       📊 Balanço Diário: Ganhos, Renovações e Perdas
                     </h3>
-                    <p className="text-slate-500 text-xs mb-4">
-                      💡 Verde = novos clientes | Roxo = quem renovou | Vermelho = quem cancelou
+                    <p className="text-[#8ea9d9] text-xs mb-4">
+                      💡 Verde = novos clientes | Roxo = quem renovou | Rosa = quem cancelou
                     </p>
                     <Card 
-                      className="p-6 border-[rgba(255,255,255,0.05)]"
-                      style={{ backgroundColor: '#0E1321' }}
+                      className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl"
                     >
                       <ResponsiveContainer width="100%" height={280}>
                         <BarChart data={historicoGanhos.slice(-14)}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                           <XAxis 
-                            dataKey="dia" 
-                            stroke="#E9EDF1"
-                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                            label={{ value: 'Últimos 14 dias', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
+                            dataKey="diaFormatado" 
+                            stroke="#8ea9d9"
+                            tick={{ fill: '#8ea9d9', fontSize: 10 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={70}
                           />
                           <YAxis 
-                            stroke="#E9EDF1"
-                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                            tickFormatter={(value) => `R$ ${formatK(value)}`}
-                            label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
+                            stroke="#8ea9d9"
+                            tick={{ fill: '#8ea9d9', fontSize: 11 }}
+                            tickFormatter={formatBRLCompact}
                           />
                           <RechartsTooltip 
                             contentStyle={{ 
-                              backgroundColor: '#0E1321',
-                              border: `1px solid rgba(0,255,170,0.2)`,
-                              borderRadius: '8px'
+                              backgroundColor: '#0f1621',
+                              border: '1px solid #1e2a44',
+                              borderRadius: '8px',
+                              color: '#EAF2FF'
+                            }}
+                            formatter={(value: any, name: string) => {
+                              const labels: any = {
+                                novo: 'Novos',
+                                renovacao: 'Renovações',
+                                perda: 'Perdas'
+                              };
+                              return [formatBRL(Math.abs(value)), labels[name] || name];
+                            }}
+                            labelFormatter={(label, payload) => {
+                              if (payload && payload.length > 0) {
+                                const item = payload[0].payload;
+                                return `📅 ${item.dataCompleta}`;
+                              }
+                              return label;
                             }}
                           />
-                          <Bar dataKey="ganhos" stackId="a" fill={COLORS.receita} name="Ganhos" />
-                          <Bar dataKey="renovacoes" stackId="a" fill={COLORS.renovacoes} name="Renovações" />
-                          <Bar dataKey="perdas" stackId="a" fill={COLORS.perdas} name="Perdas" />
+                          <Bar dataKey="novo" stackId="a" fill={COLORS.receita} name="novo" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="renovacao" stackId="a" fill={COLORS.renovacoes} name="renovacao" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="perda" stackId="a" fill={COLORS.perdas} name="perda" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
+                      <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-[#1e2a44]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.receita }}></div>
+                          <span className="text-[#8ea9d9] text-xs">Novos</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.renovacoes }}></div>
+                          <span className="text-[#8ea9d9] text-xs">Renovações</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.perdas }}></div>
+                          <span className="text-[#8ea9d9] text-xs">Perdas</span>
+                        </div>
+                      </div>
                     </Card>
                   </div>
 
                   {/* Crescimento Acumulado */}
                   <div>
-                    <h3 className="text-white mb-2 text-sm" style={{ fontWeight: 600 }}>
+                    <h3 className="text-[#EAF2FF] mb-2 text-sm" style={{ fontWeight: 600 }}>
                       📈 Crescimento Acumulado
                     </h3>
-                    <p className="text-slate-500 text-xs mb-4">
+                    <p className="text-[#8ea9d9] text-xs mb-4">
                       💡 Soma total da receita ao longo do tempo. Mostra o crescimento do seu negócio.
                     </p>
                     <Card 
-                      className="p-6 border-[rgba(255,255,255,0.05)]"
-                      style={{ backgroundColor: '#0E1321' }}
+                      className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl"
                     >
                       <ResponsiveContainer width="100%" height={280}>
-                        <LineChart data={historicoGanhos}>
+                        <AreaChart data={historicoGanhos}>
+                          <defs>
+                            <linearGradient id="acumuladoGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={COLORS.dourado} stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor={COLORS.dourado} stopOpacity={0.05}/>
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                           <XAxis 
-                            dataKey="dia" 
-                            stroke="#E9EDF1"
-                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                            label={{ value: 'Dia do Período', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
+                            dataKey="diaFormatado" 
+                            stroke="#8ea9d9"
+                            tick={{ fill: '#8ea9d9', fontSize: 10 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={70}
+                            interval="preserveStartEnd"
                           />
                           <YAxis 
-                            stroke="#E9EDF1"
-                            tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                            tickFormatter={(value) => `R$ ${formatK(value)}`}
-                            label={{ value: 'Receita Acumulada (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1', offset: 10 }}
+                            stroke="#8ea9d9"
+                            tick={{ fill: '#8ea9d9', fontSize: 11 }}
+                            tickFormatter={formatBRLCompact}
                           />
                           <RechartsTooltip 
                             contentStyle={{ 
-                              backgroundColor: '#0E1321',
-                              border: `1px solid rgba(0,255,170,0.2)`,
-                              borderRadius: '8px'
+                              backgroundColor: '#0f1621',
+                              border: '1px solid #1e2a44',
+                              borderRadius: '8px',
+                              color: '#EAF2FF'
+                            }}
+                            formatter={(value: any) => [formatBRL(value), 'Receita Acumulada']}
+                            labelFormatter={(label, payload) => {
+                              if (payload && payload.length > 0) {
+                                const item = payload[0].payload;
+                                return `📅 ${item.dataCompleta}`;
+                              }
+                              return label;
                             }}
                           />
-                          <Line 
+                          <Area 
                             type="monotone" 
                             dataKey="acumulado" 
                             stroke={COLORS.dourado}
+                            fill="url(#acumuladoGradient)"
                             strokeWidth={3}
-                            dot={false}
                             name="Receita Acumulada"
                           />
-                        </LineChart>
+                        </AreaChart>
                       </ResponsiveContainer>
-                      <div className="mt-4 pt-4 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                        <p className="text-slate-400 text-sm">
+                      <div className="mt-4 pt-4 border-t border-[#1e2a44] text-center">
+                        <p className="text-[#8ea9d9] text-sm">
                           📈 Crescimento total: 
-                          <span className="ml-2" style={{ color: COLORS.receita, fontWeight: 600 }}>
-                            +18.4%
+                          <span className="ml-2 text-[#00BFFF]" style={{ fontWeight: 600 }}>
+                            +{((historicoGanhos[historicoGanhos.length - 1]?.acumulado || 0) / (historicoGanhos[0]?.acumulado || 1) * 100 - 100).toFixed(1)}%
                           </span> no período
                         </p>
                       </div>
@@ -1349,21 +1631,22 @@ export function FinancialView({ data }: Props) {
               </div>
             )}
 
-            {/* Seção: Desempenho Comercial */}
+            {/* Seção: Desempenho Comercial - VERSÃO MELHORADA */}
             {activeSection === 'desempenho-comercial' && (
               <div className="space-y-6">
+                {/* Header */}
                 <div>
-                  <h2 className="text-white flex items-center gap-2">
+                  <h2 className="text-[#EAF2FF] flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" style={{ color: COLORS.receitaNeon }} />
                     <span>Desempenho Comercial</span>
                   </h2>
-                  <p className="text-slate-500 text-sm mt-1">
+                  <p className="text-[#8ea9d9] text-sm mt-1">
                     Indicadores estratégicos de crescimento
                   </p>
                 </div>
 
-                {/* KPIs Principais */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* NÍVEL 1: KPIs Principais com Gradientes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                   {[
                     { 
                       label: 'Valor Vitalício do Cliente', 
@@ -1465,7 +1748,7 @@ export function FinancialView({ data }: Props) {
                                   </span>
                                 </div>
                               </div>
-                              <div className="relative w-full h-8 bg-slate-800 rounded-lg overflow-hidden">
+                              <div className="relative w-full h-8 bg-[#10182b] rounded-lg overflow-hidden">
                                 <div 
                                   className="absolute top-0 left-0 h-full flex items-center justify-center transition-all duration-500"
                                   style={{ 
@@ -1541,151 +1824,106 @@ export function FinancialView({ data }: Props) {
 
                 {/* LTV Mensal */}
                 <div>
-                  <h3 className="text-white mb-2 text-sm" style={{ fontWeight: 600 }}>
+                  <h3 className="text-[#EAF2FF] mb-2 text-sm" style={{ fontWeight: 600 }}>
                     💰 Valor Vitalício do Cliente (LTV) ao longo do tempo
                   </h3>
-                  <p className="text-slate-500 text-xs mb-4">
+                  <p className="text-[#8ea9d9] text-xs mb-4">
                     💡 Quanto cada cliente vale em média durante sua jornada com você
                   </p>
                   <Card 
-                    className="p-6 border-[rgba(255,255,255,0.05)]"
-                    style={{ backgroundColor: '#0E1321' }}
+                    className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl"
+                    style={{ height: '340px' }}
                   >
                     <ResponsiveContainer width="100%" height={260}>
-                      <LineChart data={Array.from({ length: 6 }, (_, i) => ({
-                        mes: `Mês ${i + 1}`,
-                        ltv: ltv * (0.8 + (i * 0.04))
-                      }))}>
+                      <AreaChart data={ltvHistorico}>
+                        <defs>
+                          <linearGradient id="ltvGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={COLORS.receita} stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor={COLORS.receita} stopOpacity={0.05}/>
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                         <XAxis 
                           dataKey="mes" 
-                          stroke="#E9EDF1"
-                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
-                          label={{ value: 'Período', position: 'insideBottom', offset: -5, fill: '#E9EDF1' }}
+                          stroke="#8ea9d9"
+                          tick={{ fill: '#8ea9d9', fontSize: 11 }}
                         />
                         <YAxis 
-                          stroke="#E9EDF1"
-                          tick={{ fill: '#E9EDF1', fontSize: 11 }}
+                          stroke="#8ea9d9"
+                          tick={{ fill: '#8ea9d9', fontSize: 11 }}
                           tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
-                          label={{ value: 'LTV (R$)', angle: -90, position: 'insideLeft', fill: '#E9EDF1' }}
                         />
                         <RechartsTooltip 
                           contentStyle={{ 
-                            backgroundColor: '#0E1321',
-                            border: `1px solid rgba(0,255,170,0.2)`,
-                            borderRadius: '8px'
+                            backgroundColor: '#0f1621',
+                            border: '1px solid #1e2a44',
+                            borderRadius: '8px',
+                            color: '#EAF2FF'
+                          }}
+                          formatter={(value: any) => [formatBRL(value), 'LTV']}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              return `📅 ${payload[0].payload.mesCompleto}`;
+                            }
+                            return label;
                           }}
                         />
-                        <Line 
+                        <Area 
                           type="monotone" 
                           dataKey="ltv" 
                           stroke={COLORS.receita}
+                          fill="url(#ltvGradient)"
                           strokeWidth={3}
-                          dot={{ fill: COLORS.receita, r: 4 }}
+                          dot={{ fill: COLORS.receita, r: 5, strokeWidth: 2, stroke: '#0b0f19' }}
+                          activeDot={{ r: 7, fill: COLORS.receita, stroke: '#EAF2FF', strokeWidth: 2 }}
                           name="LTV"
                         />
-                      </LineChart>
+                      </AreaChart>
                     </ResponsiveContainer>
+                    
+                    <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#1e2a44]">
+                      <p className="text-[#8ea9d9] text-xs">
+                        Tendência: 
+                        <span className="ml-2 text-[#00d18f]" style={{ fontWeight: 600 }}>
+                          +{(((ltvHistorico[ltvHistorico.length - 1].ltv - ltvHistorico[0].ltv) / ltvHistorico[0].ltv) * 100).toFixed(1)}%
+                        </span> em 6 meses
+                      </p>
+                      <p className="text-[#8ea9d9] text-xs">
+                        Projeção próximo mês: 
+                        <span className="ml-2 text-[#00BFFF]" style={{ fontWeight: 600 }}>
+                          R$ {(ltvHistorico[ltvHistorico.length - 1].ltv * 1.04).toFixed(0)}
+                        </span>
+                      </p>
+                    </div>
                   </Card>
                 </div>
               </div>
             )}
 
-            {/* Seção: Tráfego e Custos (Standby) */}
+            {/* Seção: Tráfego e Custos - Facebook Ads */}
             {activeSection === 'trafego-custos' && (
               <div className="space-y-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-white flex items-center gap-2">
-                      <DollarSign className="w-5 h-5" style={{ color: COLORS.amarelo }} />
-                      <span>Tráfego e Custos</span>
-                    </h2>
-                    <Badge 
-                      variant="outline"
-                      style={{ 
-                        borderColor: `${COLORS.amarelo}40`,
-                        color: COLORS.amarelo
-                      }}
-                    >
-                      Em desenvolvimento
-                    </Badge>
-                  </div>
-                  <p className="text-slate-500 text-sm">
-                    Controle de investimento em Ads e ROI por canal
+                  <h2 className="text-[#EAF2FF] flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" style={{ color: COLORS.ativos }} />
+                    <span>Tráfego Pago - Facebook Ads</span>
+                  </h2>
+                  <p className="text-[#8ea9d9] text-sm mt-1">
+                    Gerencie investimento diário, acompanhe conversões e calcule ROI automaticamente
                   </p>
                 </div>
 
-                {/* Preview da Interface */}
-                <Card 
-                  className="p-8 border-[rgba(255,255,255,0.05)] relative overflow-hidden"
-                  style={{ backgroundColor: '#0E1321' }}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-5"
-                    style={{ 
-                      backgroundImage: 'linear-gradient(45deg, #f39c12 25%, transparent 25%, transparent 75%, #f39c12 75%, #f39c12), linear-gradient(45deg, #f39c12 25%, transparent 25%, transparent 75%, #f39c12 75%, #f39c12)',
-                      backgroundSize: '20px 20px',
-                      backgroundPosition: '0 0, 10px 10px'
-                    }}
-                  />
-                  
-                  <div className="relative z-10 text-center py-12">
-                    <div 
-                      className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
-                      style={{ 
-                        backgroundColor: `${COLORS.amarelo}15`,
-                        boxShadow: `0 0 40px ${COLORS.amarelo}30`
-                      }}
-                    >
-                      <Zap className="w-10 h-10" style={{ color: COLORS.amarelo }} />
-                    </div>
-                    <h3 className="text-white text-xl mb-3" style={{ fontWeight: 600 }}>
-                      Módulo em Standby
-                    </h3>
-                    <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
-                      Este painel está preparado para integrar investimento em tráfego pago (Facebook Ads, Google Ads, TikTok) e calcular ROI real cruzando gasto × receita líquida.
-                    </p>
-                    
-                    {/* Preview da tabela */}
-                    <div className="max-w-2xl mx-auto mt-8">
-                      <div className="grid grid-cols-4 gap-3 p-4 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                        <div className="text-slate-500 text-xs">Canal</div>
-                        <div className="text-slate-500 text-xs">Gasto</div>
-                        <div className="text-slate-500 text-xs">Receita</div>
-                        <div className="text-slate-500 text-xs">ROI</div>
-                        
-                        <div className="text-white text-sm">Facebook Ads</div>
-                        <div className="text-slate-400 text-sm">R$ 1.800</div>
-                        <div className="text-slate-400 text-sm">R$ 8.400</div>
-                        <div className="text-sm" style={{ color: COLORS.receita }}>4.6x</div>
-                        
-                        <div className="text-white text-sm">Google Ads</div>
-                        <div className="text-slate-400 text-sm">R$ 900</div>
-                        <div className="text-slate-400 text-sm">R$ 2.600</div>
-                        <div className="text-sm" style={{ color: COLORS.receita }}>2.9x</div>
-                        
-                        <div className="text-white text-sm">TikTok</div>
-                        <div className="text-slate-400 text-sm">R$ 400</div>
-                        <div className="text-slate-400 text-sm">R$ 1.500</div>
-                        <div className="text-sm" style={{ color: COLORS.receita }}>3.7x</div>
-                      </div>
-                    </div>
+                {/* Calendário de Investimento */}
+                <FacebookAdsCalendar 
+                  data={data}
+                  onSpendUpdate={(spends) => setFacebookSpends(spends)}
+                />
 
-                    <Button 
-                      size="lg"
-                      className="mt-8"
-                      style={{ 
-                        backgroundColor: `${COLORS.amarelo}20`,
-                        color: COLORS.amarelo,
-                        border: `1px solid ${COLORS.amarelo}40`
-                      }}
-                      disabled
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Ativar Integração (em breve)
-                    </Button>
-                  </div>
-                </Card>
+                {/* Gráficos e Análises */}
+                <TrafficAnalytics 
+                  spends={facebookSpends}
+                  data={data}
+                />
               </div>
             )}
 
@@ -1882,10 +2120,10 @@ export function FinancialView({ data }: Props) {
                       </ResponsiveContainer>
                     </div>
                     
-                    <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-800">
+                    <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-[#1e2a44]">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-1 rounded" style={{ backgroundColor: COLORS.receitaNeon }}></div>
-                        <span className="text-slate-400 text-xs">Dados Reais</span>
+                        <span className="text-[#8ea9d9] text-xs">Dados Reais</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-1 rounded" style={{ 
@@ -1893,7 +2131,7 @@ export function FinancialView({ data }: Props) {
                           opacity: 0.6,
                           backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(255,255,255,0.3) 4px, rgba(255,255,255,0.3) 8px)'
                         }}></div>
-                        <span className="text-slate-400 text-xs">Projeção</span>
+                        <span className="text-[#8ea9d9] text-xs">Projeção</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div 
@@ -1933,7 +2171,7 @@ export function FinancialView({ data }: Props) {
                               {item.value}%
                             </span>
                           </div>
-                          <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="relative w-full h-3 bg-[#10182b] rounded-full overflow-hidden">
                             <div 
                               className="absolute top-0 left-0 h-full rounded-full transition-all duration-500"
                               style={{ 

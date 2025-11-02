@@ -464,12 +464,14 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
                 </p>
               </div>
             </div>
-            {jogosDaSemana.length > 0 && (
-              <Badge className="bg-gradient-to-r from-[#00BFFF]/20 to-[#7B5CFF]/20 text-[#00BFFF] border-[#00BFFF]/50 text-sm px-3 py-1 shadow-lg shadow-[#00BFFF]/20">
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                {jogosDaSemana.length} jogos disponíveis
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {jogosDaSemana.length > 0 && (
+                <Badge className="bg-gradient-to-r from-[#00BFFF]/20 to-[#7B5CFF]/20 text-[#00BFFF] border-[#00BFFF]/50 text-sm px-3 py-1 shadow-lg shadow-[#00BFFF]/20">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  {jogosDaSemana.length} jogos disponíveis
+                </Badge>
+              )}
+            </div>
           </div>
 
           {jogosDaSemana.length > 0 ? (
@@ -1189,7 +1191,6 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
           </div>
         </div>
       </Card>
-
 
     </div>
   );

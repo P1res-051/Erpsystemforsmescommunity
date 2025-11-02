@@ -419,19 +419,19 @@ export function RetentionView({ data }: Props) {
       {/* Header com Filtros */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl text-[#EEEEEE] font-semibold" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+          <h2 className="text-2xl text-[#EAF2FF] font-semibold" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
             Análise de Retenção
           </h2>
-          <p className="text-sm text-[#DDDDDD] mt-1">
+          <p className="text-sm text-[#8ea9d9] mt-1">
             Comportamento, fidelidade e tempo de vida dos clientes
           </p>
         </div>
         <div className="flex gap-3">
           <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
-            <SelectTrigger className="w-32 bg-[#1A1D21] border-gray-700 text-[#EEEEEE] hover:bg-[#22262B] transition-colors">
+            <SelectTrigger className="w-32 bg-[#0f1621] border-[#1e2a44] text-[#EAF2FF] hover:bg-[#141b2a] transition-colors">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-[#1A1D21] border-gray-700">
+            <SelectContent className="bg-[#0f1621] border-[#1e2a44]">
               <SelectItem value="30">30 dias</SelectItem>
               <SelectItem value="60">60 dias</SelectItem>
               <SelectItem value="90">90 dias</SelectItem>
@@ -439,7 +439,7 @@ export function RetentionView({ data }: Props) {
           </Select>
           <Button 
             onClick={exportReport} 
-            className="gap-2 bg-[#00C897] hover:bg-[#00B587] text-white border-0 transition-all hover:scale-105 hover:shadow-lg"
+            className="gap-2 bg-gradient-to-r from-[#00BFFF] to-[#0099CC] hover:from-[#00AAEE] hover:to-[#0088BB] text-white border-0 transition-all hover:scale-105 hover:shadow-lg"
           >
             <Download className="w-4 h-4" />
             Exportar Relatório
@@ -450,25 +450,24 @@ export function RetentionView({ data }: Props) {
       {/* KPIs Principais - Com sombra e hover melhorado */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Taxa de Retenção - CIANO */}
-        <Card className="p-5 bg-[#121726] border transition-all hover:scale-[1.02] cursor-pointer" style={{ 
-          borderColor: 'rgba(0, 191, 255, 0.3)',
+        <Card className="p-5 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-[1.02] cursor-pointer" style={{ 
           boxShadow: '0 0 15px rgba(0, 191, 255, 0.3)'
         }}>
           <div className="flex items-start justify-between h-full">
             <div className="flex flex-col justify-between h-full">
-              <p className="text-[11px] text-[#9FAAC6] uppercase tracking-wider mb-2">
+              <p className="text-[11px] text-[#8ea9d9] uppercase tracking-wider mb-2">
                 TAXA DE RETENÇÃO
               </p>
-              <p className="text-[32px] font-bold text-white mt-1">
+              <p className="text-[32px] font-bold text-[#EAF2FF] mt-1">
                 {retentionAnalysis.retentionRate.toFixed(1)}<span className="text-lg">%</span>
               </p>
               <div className="flex items-center gap-2 mt-2">
                 {retentionAnalysis.retentionChange >= 0 ? (
                   <TrendingUp className="w-3.5 h-3.5 text-[#00BFFF]" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-[#FF3DAE]" />
+                  <TrendingDown className="w-3.5 h-3.5 text-[#FF00CC]" />
                 )}
-                <span className={`text-[13px] font-medium ${retentionAnalysis.retentionChange >= 0 ? 'text-[#00BFFF]' : 'text-[#FF3DAE]'}`}>
+                <span className={`text-[13px] font-medium ${retentionAnalysis.retentionChange >= 0 ? 'text-[#00BFFF]' : 'text-[#FF00CC]'}`}>
                   {retentionAnalysis.retentionChange >= 0 ? '+' : ''}{retentionAnalysis.retentionChange.toFixed(1)}%
                 </span>
               </div>
@@ -477,79 +476,76 @@ export function RetentionView({ data }: Props) {
           </div>
         </Card>
 
-        {/* Churn Mensal - ROSA */}
-        <Card className="p-5 bg-[#121726] border transition-all hover:scale-[1.02] cursor-pointer" style={{ 
-          borderColor: 'rgba(255, 61, 174, 0.3)',
-          boxShadow: '0 0 15px rgba(255, 61, 174, 0.3)'
+        {/* Churn Mensal - MAGENTA */}
+        <Card className="p-5 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-[1.02] cursor-pointer" style={{ 
+          boxShadow: '0 0 15px rgba(255, 0, 204, 0.3)'
         }}>
           <div className="flex items-start justify-between h-full">
             <div className="flex flex-col justify-between h-full">
-              <p className="text-[11px] text-[#9FAAC6] uppercase tracking-wider mb-2">
+              <p className="text-[11px] text-[#8ea9d9] uppercase tracking-wider mb-2">
                 CHURN MENSAL
               </p>
-              <p className="text-[32px] font-bold text-white mt-1">
+              <p className="text-[32px] font-bold text-[#EAF2FF] mt-1">
                 {retentionAnalysis.churnRate.toFixed(1)}<span className="text-lg">%</span>
               </p>
               <div className="flex items-center gap-2 mt-2">
                 {retentionAnalysis.retentionChange >= 0 ? (
                   <TrendingDown className="w-3.5 h-3.5 text-[#00BFFF]" />
                 ) : (
-                  <TrendingUp className="w-3.5 h-3.5 text-[#FF3DAE]" />
+                  <TrendingUp className="w-3.5 h-3.5 text-[#FF00CC]" />
                 )}
-                <span className={`text-[13px] font-medium ${retentionAnalysis.retentionChange >= 0 ? 'text-[#00BFFF]' : 'text-[#FF3DAE]'}`}>
+                <span className={`text-[13px] font-medium ${retentionAnalysis.retentionChange >= 0 ? 'text-[#00BFFF]' : 'text-[#FF00CC]'}`}>
                   {retentionAnalysis.retentionChange >= 0 ? 'Melhor' : 'Pior'}
                 </span>
               </div>
             </div>
-            <ArrowDownRight className="w-12 h-12 text-[#FF3DAE]" style={{ filter: 'drop-shadow(0 0 6px #FF3DAE)' }} />
+            <ArrowDownRight className="w-12 h-12 text-[#FF00CC]" style={{ filter: 'drop-shadow(0 0 6px #FF00CC)' }} />
           </div>
         </Card>
 
         {/* Clientes Fiéis - MAGENTA */}
-        <Card className="p-5 bg-[#121726] border transition-all hover:scale-[1.02] cursor-pointer" style={{ 
-          borderColor: 'rgba(255, 0, 204, 0.3)',
+        <Card className="p-5 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-[1.02] cursor-pointer" style={{ 
           boxShadow: '0 0 15px rgba(255, 0, 204, 0.3)'
         }}>
           <div className="flex items-start justify-between h-full">
             <div className="flex flex-col justify-between h-full">
-              <p className="text-[11px] text-[#9FAAC6] uppercase tracking-wider mb-2">
+              <p className="text-[11px] text-[#8ea9d9] uppercase tracking-wider mb-2">
                 CLIENTES FIÉIS (2+)
               </p>
-              <p className="text-[32px] font-bold text-white mt-1">
+              <p className="text-[32px] font-bold text-[#EAF2FF] mt-1">
                 {retentionAnalysis.totalLoyalClients.toLocaleString('pt-BR')}
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <Heart className="w-3.5 h-3.5 text-[#7B5CFF]" />
-                <span className="text-[13px] font-medium text-[#7B5CFF]">
+                <Heart className="w-3.5 h-3.5 text-[#FF00CC]" />
+                <span className="text-[13px] font-medium text-[#FF00CC]">
                   {retentionAnalysis.fidelityRate.toFixed(1)}%
                 </span>
               </div>
             </div>
-            <Heart className="w-12 h-12 text-[#7B5CFF]" style={{ filter: 'drop-shadow(0 0 6px #7B5CFF)' }} />
+            <Heart className="w-12 h-12 text-[#FF00CC]" style={{ filter: 'drop-shadow(0 0 6px #FF00CC)' }} />
           </div>
         </Card>
 
-        {/* Tempo Médio de Vida - AZUL */}
-        <Card className="p-5 bg-[#121726] border transition-all hover:scale-[1.02] cursor-pointer" style={{ 
-          borderColor: 'rgba(30, 144, 255, 0.3)',
-          boxShadow: '0 0 15px rgba(30, 144, 255, 0.3)'
+        {/* Tempo Médio de Vida - CIANO */}
+        <Card className="p-5 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-[1.02] cursor-pointer" style={{ 
+          boxShadow: '0 0 15px rgba(0, 191, 255, 0.3)'
         }}>
           <div className="flex items-start justify-between h-full">
             <div className="flex flex-col justify-between h-full">
-              <p className="text-[11px] text-[#9FAAC6] uppercase tracking-wider mb-2">
+              <p className="text-[11px] text-[#8ea9d9] uppercase tracking-wider mb-2">
                 TEMPO MÉDIO DE VIDA
               </p>
-              <p className="text-[32px] font-bold text-white mt-1">
+              <p className="text-[32px] font-bold text-[#EAF2FF] mt-1">
                 {retentionAnalysis.avgLifetimeMonths.toFixed(0)}<span className="text-lg"> m</span>
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <Award className="w-3.5 h-3.5 text-[#1E90FF]" />
-                <span className="text-[13px] font-medium text-[#1E90FF]">
+                <Award className="w-3.5 h-3.5 text-[#00BFFF]" />
+                <span className="text-[13px] font-medium text-[#00BFFF]">
                   {retentionAnalysis.totalRenewed} renovaram
                 </span>
               </div>
             </div>
-            <Award className="w-12 h-12 text-[#1E90FF]" style={{ filter: 'drop-shadow(0 0 6px #1E90FF)' }} />
+            <Award className="w-12 h-12 text-[#00BFFF]" style={{ filter: 'drop-shadow(0 0 6px #00BFFF)' }} />
           </div>
         </Card>
       </div>
@@ -620,9 +616,9 @@ export function RetentionView({ data }: Props) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Clientes Ativos vs Perdidos */}
-            <Card className="p-8 bg-[#1A1D21] border-gray-700 transition-all hover:scale-102 hover:border-gray-600">
-              <h3 className="flex items-center gap-2 mb-6 text-[#EEEEEE] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-                <Users className="w-5 h-5 text-[#00C897]" />
+            <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-102 hover:border-gray-600">
+              <h3 className="flex items-center gap-2 mb-6 text-[#EAF2FF] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                <Users className="w-5 h-5 text-[#00BFFF]" />
                 Clientes Ativos vs Perdidos
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -652,9 +648,9 @@ export function RetentionView({ data }: Props) {
                   />
                   <Tooltip
                     contentStyle={{ 
-                      backgroundColor: '#1A1D21', 
-                      border: '1px solid #374151',
-                      color: '#EEEEEE',
+                      backgroundColor: '#0f1621', 
+                      border: '1px solid #1e2a44',
+                      color: '#EAF2FF',
                       borderRadius: '8px'
                     }}
                     formatter={(value: any, name: any, props: any) => [
@@ -671,23 +667,23 @@ export function RetentionView({ data }: Props) {
               </ResponsiveContainer>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="p-4 rounded-lg bg-[#00C897]/10 border border-[#00C897]/30 transition-all hover:bg-[#00C897]/15">
-                  <p className="text-xs text-[#DDDDDD] uppercase tracking-wide">Retidos</p>
-                  <p className="text-3xl text-[#EEEEEE] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{retentionAnalysis.retained}</p>
-                  <p className="text-sm text-[#00C897] mt-1">{retentionAnalysis.retentionRate.toFixed(1)}%</p>
+                <div className="p-4 rounded-lg bg-[#00BFFF]/10 border border-[#00BFFF]/30 transition-all hover:bg-[#00BFFF]/15">
+                  <p className="text-xs text-[#8ea9d9] uppercase tracking-wide">Retidos</p>
+                  <p className="text-3xl text-[#EAF2FF] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{retentionAnalysis.retained}</p>
+                  <p className="text-sm text-[#00BFFF] mt-1">{retentionAnalysis.retentionRate.toFixed(1)}%</p>
                 </div>
-                <div className="p-4 rounded-lg bg-[#E84A5F]/10 border border-[#E84A5F]/30 transition-all hover:bg-[#E84A5F]/15">
-                  <p className="text-xs text-[#DDDDDD] uppercase tracking-wide">Perdidos</p>
-                  <p className="text-3xl text-[#EEEEEE] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{retentionAnalysis.lost}</p>
-                  <p className="text-sm text-[#E84A5F] mt-1">{retentionAnalysis.churnRate.toFixed(1)}%</p>
+                <div className="p-4 rounded-lg bg-[#FF00CC]/10 border border-[#FF00CC]/30 transition-all hover:bg-[#FF00CC]/15">
+                  <p className="text-xs text-[#8ea9d9] uppercase tracking-wide">Perdidos</p>
+                  <p className="text-3xl text-[#EAF2FF] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{retentionAnalysis.lost}</p>
+                  <p className="text-sm text-[#FF00CC] mt-1">{retentionAnalysis.churnRate.toFixed(1)}%</p>
                 </div>
               </div>
             </Card>
 
             {/* Nível de Fidelidade */}
-            <Card className="p-8 bg-[#1A1D21] border-gray-700 transition-all hover:scale-102 hover:border-gray-600">
-              <h3 className="flex items-center gap-2 mb-6 text-[#EEEEEE] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-                <Heart className="w-5 h-5 text-[#E43F6F]" />
+            <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-102 hover:border-gray-600">
+              <h3 className="flex items-center gap-2 mb-6 text-[#EAF2FF] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                <Heart className="w-5 h-5 text-[#FF00CC]" />
                 Nível de Fidelidade
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -713,9 +709,9 @@ export function RetentionView({ data }: Props) {
                   />
                   <Tooltip
                     contentStyle={{ 
-                      backgroundColor: '#1A1D21', 
-                      border: '1px solid #374151',
-                      color: '#EEEEEE',
+                      backgroundColor: '#0f1621', 
+                      border: '1px solid #1e2a44',
+                      color: '#EAF2FF',
                       borderRadius: '8px'
                     }}
                     formatter={(value: any) => [value, 'Clientes']}
@@ -728,9 +724,9 @@ export function RetentionView({ data }: Props) {
                 </BarChart>
               </ResponsiveContainer>
 
-              <div className="mt-6 p-4 rounded-lg bg-[#E43F6F]/10 border border-[#E43F6F]/30">
-                <p className="text-sm text-[#DDDDDD]">Destaque para 2+ renovações</p>
-                <p className="text-2xl text-[#E43F6F] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+              <div className="mt-6 p-4 rounded-lg bg-[#FF00CC]/10 border border-[#FF00CC]/30">
+                <p className="text-sm text-[#8ea9d9]">Destaque para 2+ renovações</p>
+                <p className="text-2xl text-[#FF00CC] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
                   {retentionAnalysis.totalLoyalClients} clientes fiéis
                 </p>
               </div>
@@ -750,9 +746,9 @@ export function RetentionView({ data }: Props) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Renovações por Dia da Semana */}
-            <Card className="p-8 bg-[#1A1D21] border-gray-700 transition-all hover:scale-102 hover:border-gray-600">
-              <h3 className="flex items-center gap-2 mb-6 text-[#EEEEEE] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-                <Calendar className="w-5 h-5 text-[#2D9CDB]" />
+            <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-102 hover:border-gray-600">
+              <h3 className="flex items-center gap-2 mb-6 text-[#EAF2FF] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                <Calendar className="w-5 h-5 text-[#00BFFF]" />
                 Renovações por Dia da Semana
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -779,9 +775,9 @@ export function RetentionView({ data }: Props) {
                   />
                   <Tooltip
                     contentStyle={{ 
-                      backgroundColor: '#1A1D21', 
-                      border: '1px solid #374151',
-                      color: '#EEEEEE',
+                      backgroundColor: '#0f1621', 
+                      border: '1px solid #1e2a44',
+                      color: '#EAF2FF',
                       borderRadius: '8px'
                     }}
                     formatter={(value: any) => [value, 'Renovações']}
@@ -796,15 +792,15 @@ export function RetentionView({ data }: Props) {
               </ResponsiveContainer>
 
               {retentionAnalysis.bestWeekday && (
-                <div className="mt-6 p-4 rounded-lg bg-[#E43F6F]/10 border border-[#E43F6F]/30">
+                <div className="mt-6 p-4 rounded-lg bg-[#FF00CC]/10 border border-[#FF00CC]/30">
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-5 h-5 text-[#E43F6F]" />
-                    <p className="text-sm text-[#DDDDDD] uppercase tracking-wide">Melhor dia</p>
+                    <Calendar className="w-5 h-5 text-[#FF00CC]" />
+                    <p className="text-sm text-[#8ea9d9] uppercase tracking-wide">Melhor dia</p>
                   </div>
-                  <p className="text-2xl text-[#EEEEEE] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                  <p className="text-2xl text-[#EAF2FF] mt-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
                     {retentionAnalysis.bestWeekday[0]}
                   </p>
-                  <p className="text-sm text-[#E43F6F] mt-1">
+                  <p className="text-sm text-[#FF00CC] mt-1">
                     🗓️ {retentionAnalysis.bestWeekday[1]} renovações
                   </p>
                 </div>
@@ -812,9 +808,9 @@ export function RetentionView({ data }: Props) {
             </Card>
 
             {/* Curva de Retenção */}
-            <Card className="p-8 bg-[#1A1D21] border-gray-700 transition-all hover:scale-102 hover:border-gray-600">
-              <h3 className="flex items-center gap-2 mb-6 text-[#EEEEEE] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-                <Activity className="w-5 h-5 text-[#2D9CDB]" />
+            <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl transition-all hover:scale-102 hover:border-gray-600">
+              <h3 className="flex items-center gap-2 mb-6 text-[#EAF2FF] uppercase tracking-wide text-sm" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                <Activity className="w-5 h-5 text-[#00BFFF]" />
                 Curva de Retenção ao Longo do Tempo
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -851,9 +847,9 @@ export function RetentionView({ data }: Props) {
                   />
                   <Tooltip
                     contentStyle={{ 
-                      backgroundColor: '#1A1D21', 
-                      border: '1px solid #374151',
-                      color: '#EEEEEE',
+                      backgroundColor: '#0f1621', 
+                      border: '1px solid #1e2a44',
+                      color: '#EAF2FF',
                       borderRadius: '8px'
                     }}
                     formatter={(value: any, name: string) => [
@@ -874,8 +870,8 @@ export function RetentionView({ data }: Props) {
                 </LineChart>
               </ResponsiveContainer>
 
-              <div className="mt-6 p-4 rounded-lg bg-[#2D9CDB]/10 border border-[#2D9CDB]/30">
-                <p className="text-sm text-[#DDDDDD]">Linha azul mostra perda gradual de clientes ao longo do tempo</p>
+              <div className="mt-6 p-4 rounded-lg bg-[#00BFFF]/10 border border-[#00BFFF]/30">
+                <p className="text-sm text-[#8ea9d9]">Linha azul mostra perda gradual de clientes ao longo do tempo</p>
               </div>
             </Card>
           </div>
@@ -892,8 +888,8 @@ export function RetentionView({ data }: Props) {
           </div>
 
           {/* Insights de Retenção - Com cores categorizadas */}
-          <Card className="p-8 bg-[#1A1D21] border-gray-700">
-            <h3 className="text-lg mb-6 text-[#EEEEEE] flex items-center gap-2 uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+          <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
+            <h3 className="text-lg mb-6 text-[#EAF2FF] flex items-center gap-2 uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
               <Sparkles className="w-5 h-5 text-[#F59E0B]" />
               Insights de Retenção
             </h3>
@@ -930,9 +926,9 @@ export function RetentionView({ data }: Props) {
           </Card>
 
           {/* Oportunidades de Melhoria */}
-          <Card className="p-8 bg-[#1A1D21] border-gray-700">
-            <h3 className="text-lg mb-6 text-[#EEEEEE] flex items-center gap-2 uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-              <Target className="w-5 h-5 text-[#E43F6F]" />
+          <Card className="p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
+            <h3 className="text-lg mb-6 text-[#EAF2FF] flex items-center gap-2 uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+              <Target className="w-5 h-5 text-[#FF00CC]" />
               Oportunidades de Melhoria
             </h3>
             <div className="space-y-4">
@@ -941,15 +937,15 @@ export function RetentionView({ data }: Props) {
                 return (
                   <div
                     key={idx}
-                    className="flex items-start gap-4 p-5 rounded-lg bg-[#22262B] border border-gray-700 hover:border-gray-600 hover:scale-102 transition-all cursor-pointer"
+                    className="flex items-start gap-4 p-5 rounded-lg bg-[#0f1621]/50 border border-[#1e2a44] hover:border-[#00BFFF]/50 hover:scale-102 transition-all cursor-pointer"
                   >
                     <Icon className={`w-6 h-6 ${opp.color} mt-0.5 flex-shrink-0`} />
                     <div className="flex-1">
-                      <p className="text-sm text-[#EEEEEE] mb-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                      <p className="text-sm text-[#EAF2FF] mb-2" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
                         {opp.text}
                       </p>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-[#2D9CDB]/10 text-[#2D9CDB] border-[#2D9CDB]/30">
+                        <Badge variant="outline" className="bg-[#00BFFF]/10 text-[#00BFFF] border-[#00BFFF]/30">
                           💡 {opp.impact}
                         </Badge>
                       </div>
@@ -961,16 +957,16 @@ export function RetentionView({ data }: Props) {
           </Card>
 
           {/* Resumo Executivo */}
-          <Card className="p-8 bg-gradient-to-br from-[#E43F6F]/10 to-[#2D9CDB]/10 border-[#E43F6F]/30">
-            <h3 className="text-lg mb-4 text-[#EEEEEE] uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+          <Card className="p-8 bg-gradient-to-br from-[#FF00CC]/10 to-[#00BFFF]/10 border-[#FF00CC]/30 shadow-2xl">
+            <h3 className="text-lg mb-4 text-[#EAF2FF] uppercase tracking-wide" style={{ textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
               📊 Resumo Executivo
             </h3>
-            <p className="text-sm text-[#DDDDDD] leading-relaxed">
-              Dados baseados em <strong className="text-[#EEEEEE]">{retentionAnalysis.totalClients.toLocaleString('pt-BR')} clientes</strong> analisados 
-              nos últimos <strong className="text-[#EEEEEE]">{period} dias</strong>. 
-              Taxa de retenção atual: <strong className="text-[#00C897]">{retentionAnalysis.retentionRate.toFixed(1)}%</strong>, 
-              com <strong className="text-[#E43F6F]">{retentionAnalysis.totalLoyalClients.toLocaleString('pt-BR')} clientes fiéis</strong> (2+ renovações) 
-              representando <strong className="text-[#E43F6F]">{retentionAnalysis.fidelityRate.toFixed(1)}%</strong> da base renovadora.
+            <p className="text-sm text-[#8ea9d9] leading-relaxed">
+              Dados baseados em <strong className="text-[#EAF2FF]">{retentionAnalysis.totalClients.toLocaleString('pt-BR')} clientes</strong> analisados 
+              nos últimos <strong className="text-[#EAF2FF]">{period} dias</strong>. 
+              Taxa de retenção atual: <strong className="text-[#00BFFF]">{retentionAnalysis.retentionRate.toFixed(1)}%</strong>, 
+              com <strong className="text-[#FF00CC]">{retentionAnalysis.totalLoyalClients.toLocaleString('pt-BR')} clientes fiéis</strong> (2+ renovações) 
+              representando <strong className="text-[#FF00CC]">{retentionAnalysis.fidelityRate.toFixed(1)}%</strong> da base renovadora.
             </p>
           </Card>
         </TabsContent>

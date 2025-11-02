@@ -11,6 +11,8 @@ import { GamesView } from './components/GamesView';
 import { GeographicView } from './components/GeographicView';
 import { TrafficView } from './components/TrafficView';
 import { TickerBar } from './components/TickerBar';
+import { CyberButton } from './components/CyberButton';
+import { LoginView } from './components/LoginView';
 import * as XLSX from 'xlsx';
 import logoImage from 'figma:asset/041e4507fc9bd0d9356f7ec31328adbf75294fff.png';
 import { 
@@ -132,6 +134,8 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
 
   // Atualizar relógio a cada minuto
   useEffect(() => {
@@ -141,6 +145,30 @@ export default function App() {
     
     return () => clearInterval(timer);
   }, []);
+
+  // Verificar autenticação ao carregar
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Token existe, usuário está autenticado
+      setIsAuthenticated(true);
+      // Opcionalmente, validar o token com a API aqui
+    }
+  }, []);
+
+  // Handler de login bem-sucedido
+  const handleLoginSuccess = (token: string, user: any) => {
+    setIsAuthenticated(true);
+    setUserData(user);
+  };
+
+  // Handler de logout
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setIsAuthenticated(false);
+    setUserData(null);
+    setDashboardData(null);
+  };
 
   useEffect(() => {
     // Tentar carregar dados do localStorage
@@ -181,42 +209,64 @@ export default function App() {
       
       // Salvar no localStorage (com TODA a base para análise geográfica completa)
       try {
-        const dataToSave = {
-          ...processedData,
-          rawData: {
-            testes: processedData.rawData.testes.slice(0, 200),
-            conversoes: processedData.rawData.conversoes.slice(0, 200),
-            renovacoes: processedData.rawData.renovacoes,  // TODAS as renovações
-            ativos: processedData.rawData.ativos,          // TODOS os clientes ativos
-            expirados: processedData.rawData.expirados,    // TODOS os clientes expirados
-            jogos: processedData.rawData.jogos.slice(0, 100),
-            convJogos: processedData.rawData.convJogos.slice(0, 100),
-          },
-          clientesData: processedData.clientesData.slice(0, 200),
-          recentClients: processedData.recentClients.slice(0, 50),
-        };
-        localStorage.setItem('iptvDashboardData', JSON.stringify(dataToSave));
-      } catch (storageError) {
-        console.warn('Dados muito grandes para localStorage, continuando sem salvar');
-        // Se der erro de espaço, salvar pelo menos os dados essenciais
-        try {
-          const minimalData = {
+        // Calcular tamanho aproximado dos dados
+        const estimatedSize = JSON.stringify(processedData).length;
+        const maxSize = 4 * 1024 * 1024; // 4MB (seguro para localStorage)
+        
+        if (estimatedSize > maxSize) {
+          // Dados muito grandes - salvar apenas métricas essenciais (silenciosamente)
+          const essentialData = {
+            testes: processedData.testes,
+            conversoes: processedData.conversoes,
+            renovacoes: processedData.renovacoes,
+            clientesAtivos: processedData.clientesAtivos,
+            clientesExpirados: processedData.clientesExpirados,
+            taxaConversao: processedData.taxaConversao,
+            taxaFidelidade: processedData.taxaFidelidade,
+            churnRate: processedData.churnRate,
+            taxaRetencao: processedData.taxaRetencao,
+            ticketMedio: processedData.ticketMedio,
+            receitaMensal: processedData.receitaMensal,
+            receitaAnual: processedData.receitaAnual,
+            // Salvar apenas primeiros 50 registros de cada array para preview
+            rawData: {
+              testes: processedData.rawData.testes.slice(0, 20),
+              conversoes: processedData.rawData.conversoes.slice(0, 20),
+              renovacoes: processedData.rawData.renovacoes.slice(0, 50),
+              ativos: processedData.rawData.ativos.slice(0, 50),
+              expirados: processedData.rawData.expirados.slice(0, 30),
+              jogos: processedData.rawData.jogos.slice(0, 10),
+              convJogos: processedData.rawData.convJogos.slice(0, 10),
+            },
+            clientesData: processedData.clientesData.slice(0, 30),
+            recentClients: processedData.recentClients.slice(0, 10),
+          };
+          localStorage.setItem('iptvDashboardData', JSON.stringify(essentialData));
+        } else {
+          // Dados são pequenos o suficiente, salvar com limites reduzidos
+          const dataToSave = {
             ...processedData,
             rawData: {
-              testes: [],
-              conversoes: [],
-              renovacoes: processedData.rawData.renovacoes.slice(0, 500),
-              ativos: processedData.rawData.ativos,          // Priorizar clientes completos
-              expirados: processedData.rawData.expirados,
-              jogos: [],
-              convJogos: [],
+              testes: processedData.rawData.testes.slice(0, 50),
+              conversoes: processedData.rawData.conversoes.slice(0, 50),
+              renovacoes: processedData.rawData.renovacoes.slice(0, 200),
+              ativos: processedData.rawData.ativos.slice(0, 300),
+              expirados: processedData.rawData.expirados.slice(0, 150),
+              jogos: processedData.rawData.jogos.slice(0, 30),
+              convJogos: processedData.rawData.convJogos.slice(0, 30),
             },
-            clientesData: [],
-            recentClients: [],
+            clientesData: processedData.clientesData.slice(0, 50),
+            recentClients: processedData.recentClients.slice(0, 20),
           };
-          localStorage.setItem('iptvDashboardData', JSON.stringify(minimalData));
-        } catch {
-          console.error('Impossível salvar no localStorage - base muito grande');
+          localStorage.setItem('iptvDashboardData', JSON.stringify(dataToSave));
+        }
+      } catch (storageError) {
+        // Erro silencioso - não mostrar para o usuário
+        // Limpar localStorage se estiver cheio
+        try {
+          localStorage.removeItem('iptvDashboardData');
+        } catch (e) {
+          // Silenciosamente falhar
         }
       }
     } catch (error) {
@@ -812,7 +862,7 @@ export default function App() {
         const hora = date.getHours();
         
         if (!heatmap[dia]) heatmap[dia] = {};
-        heatmap[dia][hora] = (heatmap[dia][hora] || 0) + 1;
+        heatmap[dia][hora] = (heatmap[dia]?.[hora] || 0) + 1;
       }
     });
     
@@ -925,7 +975,7 @@ export default function App() {
   }
 
   // Adicionar aba de Rastreamento (Em Breve)
-  tabs.push({ id: 'tracking', label: 'Rastreamento', icon: Activity });
+  tabs.push({ id: 'tracking', label: 'Pixel', icon: Activity });
 
   // Extrair nome da revenda
   const nomeRevenda = dashboardData?.rawData?.ativos?.[0]?.Revenda || 
@@ -934,10 +984,15 @@ export default function App() {
                       dashboardData?.rawData?.ativos?.[0]?.revendedor ||
                       dashboardData?.topRevendedores?.[0]?.revendedor || '';
 
+  // Se não estiver autenticado, mostrar tela de login
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header - CONGELADO NO TOPO */}
-      <header className="bg-gradient-to-r from-[#0B0F18] via-[#121726] to-[#0B0F18] border-b border-[#1E2840] fixed top-0 left-0 right-0 z-50 shadow-2xl backdrop-blur-sm">
+      <header className="bg-gradient-to-r from-[#0B0F18] via-[#121726] to-[#0B0F18] fixed top-0 left-0 right-0 z-50 shadow-2xl backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo + Título + Nome Revenda + Horário */}
@@ -946,7 +1001,14 @@ export default function App() {
               <img src={logoImage} alt="AutonomyX Logo" className="w-16 h-16 object-contain" />
               
               <div className="flex flex-col gap-1">
-                <h1 className="text-[#EAF2FF] font-semibold text-xl">AutonomyX - Dashboard</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-[#EAF2FF] font-semibold text-xl">AutonomyX - Dashboard</h1>
+                  {localStorage.getItem('is_admin') === 'true' && (
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-[#ffd700] to-[#ffed4e] text-[#000] text-[10px] font-bold rounded uppercase tracking-wider">
+                      Admin Mode
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {nomeRevenda && (
                     <>
@@ -1000,6 +1062,13 @@ export default function App() {
                 onChange={handleFileUpload}
                 className="hidden"
               />
+              <Button 
+                onClick={handleLogout} 
+                variant="outline" 
+                className="bg-[#121726] border-[#1E2840] text-[#ff4a9a] hover:bg-[#1A2035] hover:border-[#ff4a9a] transition-all"
+              >
+                Sair
+              </Button>
             </div>
           </div>
         </div>
@@ -1012,8 +1081,28 @@ export default function App() {
         </div>
       )}
 
-      {/* Espaçamento para compensar header fixo + ticker bar */}
-      <div className={!isLoading && dashboardData ? "h-36" : "h-20"}></div>
+      {/* Navigation Tabs - FIXO no topo abaixo do ticker (parte do header fixo) */}
+      {!isLoading && dashboardData && (
+        <div className="fixed top-[116px] left-0 right-0 z-30 bg-[#0B0F18] shadow-lg">
+          <div className="max-w-7xl mx-auto px-6">
+            <nav className="flex gap-2 overflow-x-auto py-1.5">
+              {tabs.map((tab) => (
+                <CyberButton
+                  key={tab.id}
+                  id={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  isActive={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                />
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Espaçamento para compensar header fixo + ticker bar + menu fixo */}
+      <div className={!isLoading && dashboardData ? "h-[168px]" : "h-20"}></div>
 
       {isLoading && (
         <div className="flex items-center justify-center py-20">
@@ -1055,27 +1144,6 @@ export default function App() {
 
       {!isLoading && dashboardData && (
         <>
-          {/* Navigation Tabs */}
-          <div className="bg-slate-900/50 border-b border-slate-800 backdrop-blur-sm">
-            <div className="max-w-7xl mx-auto px-6">
-              <nav className="flex gap-2 overflow-x-auto py-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? 'bg-gradient-to-r from-[#00BFFF] to-[#1E90FF] text-[#0B0F18] shadow-lg shadow-[#00BFFF]/30'
-                        : 'text-[#9FAAC6] hover:text-[#EAF2FF] hover:bg-[#1A2035]'
-                    }`}
-                  >
-                    <tab.icon className="w-4 h-4" />
-                    <span className="text-sm">{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
 
           {/* Main Content */}
           <main className="max-w-7xl mx-auto px-6 py-6">
@@ -1089,12 +1157,12 @@ export default function App() {
             {activeTab === 'games' && <GamesView data={dashboardData} />}
             {activeTab === 'tracking' && (
               <div className="flex items-center justify-center min-h-[60vh]">
-                <Card className="p-12 text-center max-w-md bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-2xl">
+                <Card className="p-12 text-center max-w-md bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
                   <div className="w-20 h-20 bg-gradient-to-br from-[#00BFFF] to-[#1E90FF] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <Activity className="w-10 h-10 text-white" />
                   </div>
-                  <h2 className="text-[#EAF2FF] text-2xl mb-3">Rastreamento de Campanhas</h2>
-                  <p className="text-[#9FAAC6] mb-4">
+                  <h2 className="text-[#EAF2FF] text-2xl mb-3">Pixel de Rastreamento</h2>
+                  <p className="text-[#8ea9d9] mb-4">
                     Em breve você poderá rastrear suas campanhas de marketing via N8N integrado ao sistema.
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00BFFF]/10 rounded-lg border border-[#00BFFF]/30">
