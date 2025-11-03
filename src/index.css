@@ -3425,6 +3425,10 @@
     color: #ff3dae;
   }
 
+  .text-\[\#FF4A9A\] {
+    color: #ff4a9a;
+  }
+
   .text-\[\#FFB800\] {
     color: #ffb800;
   }
@@ -4933,12 +4937,6 @@
   @media (width >= 40rem) {
     .sm\:text-left {
       text-align: left;
-    }
-  }
-
-  @media (width >= 48rem) {
-    .md\:block {
-      display: block;
     }
   }
 

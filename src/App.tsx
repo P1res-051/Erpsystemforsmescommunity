@@ -1208,22 +1208,71 @@ export default function App() {
             
             {/* Botões de Ação */}
             <div className="flex items-center gap-3">
-              {dashboardData && (
-                <>
-                  <div className="hidden md:block px-4 py-2 bg-[#1A2035]/50 rounded-lg border border-[#1E2840]">
-                    <p className="text-[#9FAAC6] text-xs">127 usuários</p>
-                  </div>
-                  <Button onClick={exportToExcel} variant="outline" className="bg-[#121726] border-[#1E2840] text-[#EAF2FF] hover:bg-[#1A2035] hover:border-[#00BFFF] transition-all">
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Exportar Relatório
-                  </Button>
-                </>
+              {/* Badge de Status de Atualização */}
+              {lastRefresh && (
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-[#1A2035]/50 rounded-lg border border-[#1E2840]">
+                  <Clock className="w-3 h-3 text-[#00BFFF]" />
+                  <span className="text-[#9FAAC6] text-xs">
+                    {(() => {
+                      const now = new Date();
+                      const diff = now.getTime() - lastRefresh.getTime();
+                      const minutes = Math.floor(diff / 60000);
+                      if (minutes < 1) return 'Agora';
+                      if (minutes === 1) return 'Há 1 min';
+                      if (minutes < 60) return `Há ${minutes} min`;
+                      return lastRefresh.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    })()}
+                  </span>
+                </div>
               )}
+              
+              {/* Botão Atualizar */}
+              <Button
+                onClick={refreshNow}
+                disabled={isRefreshing}
+                className="relative overflow-hidden group transition-all hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(0,191,255,0.15), rgba(0,191,255,0.05))',
+                  border: '1px solid rgba(0,191,255,0.3)',
+                }}
+              >
+                <RefreshCw 
+                  className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
+                  style={{ color: '#00BFFF' }}
+                />
+                <span className="text-[#00BFFF]">
+                  {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+                </span>
+              </Button>
+
+              {dashboardData && (
+                <Button onClick={exportToExcel} variant="outline" className="bg-[#121726] border-[#1E2840] text-[#EAF2FF] hover:bg-[#1A2035] hover:border-[#00BFFF] transition-all">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Exportar
+                </Button>
+              )}
+              
+              {/* Botão Sair */}
+              <Button
+                onClick={handleLogout}
+                className="relative overflow-hidden group transition-all hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,74,154,0.15), rgba(255,74,154,0.05))',
+                  border: '1px solid rgba(255,74,154,0.3)',
+                }}
+              >
+                <LogOut 
+                  className="w-4 h-4 mr-2"
+                  style={{ color: '#FF4A9A' }}
+                />
+                <span className="text-[#FF4A9A]">Sair</span>
+              </Button>
+              
               <label htmlFor="file-upload">
                 <Button asChild className="bg-gradient-to-r from-[#00BFFF] to-[#1E90FF] hover:from-[#1E90FF] hover:to-[#00BFFF] shadow-lg hover:shadow-[#00BFFF]/50 transition-all text-[#0B0F18] font-semibold">
                   <span>
                     <Upload className="w-4 h-4 mr-2" />
-                    {dashboardData ? 'Atualizar' : 'Carregar Excel'}
+                    Carregar Excel
                   </span>
                 </Button>
               </label>
