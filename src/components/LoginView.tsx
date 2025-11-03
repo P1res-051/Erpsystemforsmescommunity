@@ -57,12 +57,11 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
         return;
       }
 
-      // Autenticação na plataforma via Painel
+      // API REAL - Endpoint de login do painel
       const response = await fetch('https://automatixbest-api.automation.app.br/api/painel/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'accept': 'application/json',
         },
         body: JSON.stringify({
           username: nomeRevenda,
@@ -75,15 +74,12 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
       }
 
       const data = await response.json();
-
-      // A API do painel pode retornar `phpsessid`, `cache_key` e `resellerid`.
-      // Em alguns cenários, `cache_key` pode não estar disponível imediatamente.
-      const phpsessid: string | undefined = data?.phpsessid;
-      const cacheKey: string | undefined = data?.cache_key;
-      const resellerId: string | undefined = data?.resellerid;
-
-      if (!phpsessid) {
-        throw new Error('Sessão (phpsessid) não recebida da API do painel');
+      
+      // Extrair dados da API real
+      const { phpsessid, cache_key, resellerid } = data;
+      
+      if (!cache_key || !phpsessid) {
+        throw new Error('Dados de autenticação incompletos');
       }
 
       // Salvar credenciais se "Lembrar-me" estiver marcado
@@ -95,14 +91,20 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
         localStorage.removeItem('remember_me');
       }
 
-      // Persistir sessão e chaves do painel (cache_key e resellerid são opcionais)
+      // Salvar tokens da API real
       localStorage.setItem('auth_token', phpsessid);
-      localStorage.setItem('panel_phpsessid', phpsessid);
-      if (cacheKey) localStorage.setItem('panel_cache_key', cacheKey);
-      if (resellerId) localStorage.setItem('panel_reseller_id', resellerId);
-
-      // Callback de sucesso (prossegue mesmo sem cache_key imediata)
-      onLoginSuccess(phpsessid, { username: nomeRevenda, resellerid: resellerId, cache_key: cacheKey });
+      localStorage.setItem('cache_key', cache_key);
+      localStorage.setItem('phpsessid', phpsessid);
+      localStorage.setItem('resellerid', resellerid);
+      
+      // Callback de sucesso com dados do usuário
+      const userData = {
+        username: nomeRevenda,
+        resellerid,
+        cache_key,
+      };
+      
+      onLoginSuccess(cache_key, userData);
 
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login. Tente novamente.');

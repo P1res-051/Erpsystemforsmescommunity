@@ -264,7 +264,7 @@ export function GamesView({ data }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-[#EAF2FF] font-semibold flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-[#00BFFF]" />
+                <CalendarIcon className="w-5 h-5 text-[#00BFFF]" />
                 Buscar Jogos
               </h3>
               {dataAtual && (
@@ -453,7 +453,7 @@ export function GamesView({ data }: Props) {
                     : 'bg-[#1e2a44] text-[#8ea9d9] hover:bg-[#2a3a54] border-[#2a3a54]'
                 } transition-all duration-300 text-xs h-8`}
               >
-                <Calendar className="w-3 h-3 mr-1" />
+                <CalendarIcon className="w-3 h-3 mr-1" />
                 {period === 'day' ? 'Hoje' : period === 'week' ? '7 dias' : '30 dias'}
               </Button>
             ))}
@@ -616,7 +616,7 @@ export function GamesView({ data }: Props) {
             onClick={() => carregarJogos()}
             className="bg-gradient-to-r from-[#00BFFF] to-[#7B5CFF] text-white border-0"
           >
-            <Calendar className="w-3.5 h-3.5 mr-1.5" />
+            <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
             Ver Jogos de Hoje
           </Button>
         </Card>

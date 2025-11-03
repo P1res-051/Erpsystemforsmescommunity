@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Upload, BarChart3, TrendingUp, Users, DollarSign, Activity, Trophy, FileDown, MapPin, Clock, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Upload, BarChart3, TrendingUp, Users, DollarSign, Activity, Trophy, FileDown, MapPin, Clock } from 'lucide-react';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { IPTVDashboard } from './components/IPTVDashboard';
@@ -13,9 +13,8 @@ import { TrafficView } from './components/TrafficView';
 import { TickerBar } from './components/TickerBar';
 import { CyberButton } from './components/CyberButton';
 import { LoginView } from './components/LoginView';
-import { painelLogin } from './utils/painelAuth';
-import { waitCacheReady } from './utils/painelData';
-import type { CacheAllAggregate } from './utils/painelData';
+import { DashboardHeader } from './components/DashboardHeader';
+import { useAutoRefresh } from './hooks/useAutoRefresh';
 import * as XLSX from 'xlsx';
 import logoImage from 'figma:asset/041e4507fc9bd0d9356f7ec31328adbf75294fff.png';
 import { 
@@ -32,6 +31,7 @@ import {
   extractHourFromDate,
   daysDifference
 } from './utils/dataProcessing';
+import { processApiData } from './utils/apiDataProcessor';
 
 export interface DashboardData {
   // Métricas principais
@@ -140,391 +140,90 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
+  // Callback para processar dados da API
+  const handleDataUpdate = useCallback((apiData: any) => {
+    console.log('📥 Processando dados recebidos da API...', apiData);
+    
+    // Aqui você deve processar os dados da API e transformar no formato DashboardData
+    // Por enquanto, vamos criar um objeto vazio e popular com os dados reais
+    const processedData: DashboardData = processApiData(apiData);
+    
+    setDashboardData(processedData);
+    
+    // Salvar no localStorage
+    localStorage.setItem('iptvDashboardData', JSON.stringify(processedData));
+  }, []);
+
+  // Hook de auto-refresh (5 minutos)
+  const {
+    isRefreshing,
+    lastRefresh,
+    error: refreshError,
+    authData,
+    refreshNow,
+    updateAuthData,
+    clearAuth,
+  } = useAutoRefresh(handleDataUpdate, {
+    enabled: isAuthenticated,
+    interval: 5 * 60 * 1000, // 5 minutos
+  });
+
   // Atualizar relógio a cada minuto
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // Atualiza a cada 60 segundos
+    }, 60000);
     
     return () => clearInterval(timer);
   }, []);
 
   // Verificar autenticação ao carregar
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Token existe, usuário está autenticado
+    const cache_key = localStorage.getItem('cache_key');
+    const phpsessid = localStorage.getItem('phpsessid');
+    const resellerid = localStorage.getItem('resellerid');
+    const savedUsername = localStorage.getItem('saved_username');
+    
+    if (cache_key && phpsessid && resellerid) {
       setIsAuthenticated(true);
-      // Opcionalmente, validar o token com a API aqui
+      setUserData({
+        username: savedUsername || 'Usuário',
+        resellerid,
+        cache_key,
+      });
     }
   }, []);
 
   // Handler de login bem-sucedido
-  const handleLoginSuccess = (token: string, user: any) => {
+  const handleLoginSuccess = (cache_key: string, user: any) => {
     setIsAuthenticated(true);
     setUserData(user);
-    // Abrir ClientsView após login
-    setActiveTab('clients');
+    
+    // Atualizar auth data no hook
+    updateAuthData({
+      cache_key,
+      phpsessid: localStorage.getItem('phpsessid') || '',
+      resellerid: localStorage.getItem('resellerid') || '',
+    });
   };
-
-  /**
-   * Constrói a estrutura DashboardData a partir do agregado do painel.
-   *
-   * - Preenche `rawData` com `ativos`, `expirados`, `testes`, `conversoes`, `renovacoes`.
-   * - Calcula contadores básicos (testes, conversões, renovacoes, ativos, expirados).
-   * - Demais métricas são inicializadas com valores neutros para futura evolução.
-   *
-   * @param agg Agregado retornado por `/api/painel/cache-all`
-   * @returns Estrutura `DashboardData` pronta para consumo nas views
-   */
-  function buildDashboardDataFromPanel(agg: CacheAllAggregate): DashboardData {
-    const ativos = agg.ativos || [];
-    const expirados = agg.expirados || [];
-    const testes = agg.testes || [];
-    const convLogs = (agg as any).conversoes || [];
-    const renLogs = (agg as any).renovacoes || [];
-
-    const clientesAtivos = ativos.length;
-    const clientesExpirados = expirados.length;
-    const testesCount = testes.length;
-    const conversoesCount = Array.isArray(convLogs) ? convLogs.length : 0;
-    const renovacoesCount = Array.isArray(renLogs) ? renLogs.length : 0;
-
-    /**
-     * Calcula estatísticas de fidelidade a partir dos logs de renovação.
-     * Conta clientes com 2+ renovações e total de renovadores únicos.
-     */
-    const calcRenewalStats = (logs: any[]) => {
-      const counts: Record<string, number> = {};
-      logs.forEach((r) => {
-        const usuario = r.Usuario || r.usuario;
-        if (!usuario) return;
-        counts[usuario] = (counts[usuario] || 0) + 1;
-      });
-      const clientesFieis = Object.values(counts).filter((c) => c >= 2).length;
-      const totalRenovadores = Object.keys(counts).length;
-      return { clientesFieis, totalRenovadores };
-    };
-
-    /**
-     * Calcula o saldo médio pós-venda com base em `Creditos_Apos` dos logs de conversão.
-     */
-    const calcSaldoMedioPosVenda = (logs: any[]) => {
-      const valores = logs
-        .map((c) => parseFloat(String(c.Creditos_Apos || c.creditos_apos || '0').replace(',', '.')))
-        .filter((v) => !isNaN(v) && v > 0);
-      if (valores.length === 0) return 0;
-      const soma = valores.reduce((a, b) => a + b, 0);
-      return Math.round((soma / valores.length) * 10) / 10;
-    };
-
-    /**
-     * Estima o ticket médio a partir dos logs de conversão usando campos comuns (`Custo`/`Valor`).
-     * Fallback para 30 quando não há dados ou campos ausentes.
-     */
-    const calcTicketMedio = (logs: any[]) => {
-      const valores = logs
-        .map((c) => parseFloat(String(c.Custo || c.custo || c.Valor || c.valor || '0').replace(',', '.')))
-        .filter((v) => !isNaN(v) && v > 0);
-      if (valores.length === 0) return 30;
-      const soma = valores.reduce((a, b) => a + b, 0);
-      return Math.round((soma / valores.length) * 100) / 100;
-    };
-
-    const { clientesFieis, totalRenovadores } = calcRenewalStats(renLogs);
-    const saldoMedioPosVenda = calcSaldoMedioPosVenda(convLogs);
-    const ticketMedioEstimado = calcTicketMedio(convLogs);
-
-    // =============================
-    // Agregações temporais e turnos
-    // =============================
-    const countByWeekday = (items: any[], dateKeyCandidates: string[]) => {
-      const map: Record<string, number> = {};
-      items.forEach((row) => {
-        const dateStr = dateKeyCandidates.find(k => row[k]) ? row[dateKeyCandidates.find(k => row[k]) as string] : undefined;
-        const date = parseDate(dateStr);
-        if (date) {
-          const dayName = getDayOfWeek(date);
-          map[dayName] = (map[dayName] || 0) + 1;
-        }
-      });
-      return map;
-    };
-
-    const countByMonth = (items: any[], dateKeyCandidates: string[]) => {
-      const monthMap: Record<string, number> = {};
-      items.forEach((row) => {
-        const dateStr = dateKeyCandidates.find(k => row[k]) ? row[dateKeyCandidates.find(k => row[k]) as string] : undefined;
-        const date = parseDate(dateStr);
-        if (date) {
-          const mesAno = getMonthYear(date);
-          monthMap[mesAno] = (monthMap[mesAno] || 0) + 1;
-        }
-      });
-      return Object.entries(monthMap).map(([mes, count]) => ({ mes, count })).sort((a, b) => sortByMesAno(a.mes, b.mes));
-    };
-
-    const countByTurno = (items: any[], dateKeyCandidates: string[]) => {
-      const turnoMap: Record<string, number> = {};
-      items.forEach((row) => {
-        const dateStr = dateKeyCandidates.find(k => row[k]) ? row[dateKeyCandidates.find(k => row[k]) as string] : undefined;
-        const date = parseDate(dateStr);
-        if (date) {
-          const turno = getTurnoFromDate(date);
-          turnoMap[turno] = (turnoMap[turno] || 0) + 1;
-        }
-      });
-      return turnoMap;
-    };
-
-    const buildHeatmapHoraDia = (items: any[], dateKeyCandidates: string[]) => {
-      const heat: Record<string, number> = {};
-      items.forEach((row) => {
-        const dateStr = dateKeyCandidates.find(k => row[k]) ? row[dateKeyCandidates.find(k => row[k]) as string] : undefined;
-        const date = parseDate(dateStr);
-        if (date) {
-          const dia = getDayOfWeek(date);
-          const hora = extractHourFromDate(date);
-          const key = `${dia}|${hora}`;
-          heat[key] = (heat[key] || 0) + 1;
-        }
-      });
-      return Object.entries(heat).map(([key, count]) => {
-        const [dia, horaStr] = key.split('|');
-        return { dia, hora: Number(horaStr), count };
-      });
-    };
-
-    const testesPorDia = countByWeekday(testes, ['Criado_Em', 'criado_em', 'Criacao', 'criacao']);
-    const conversoesPorDia = countByWeekday(convLogs, ['Data', 'data', 'DataConversao']);
-    const renovacoesPorDia = countByWeekday(renLogs, ['Data', 'data', 'DataRenovacao']);
-
-    const testesPorMes = countByMonth(testes, ['Criado_Em', 'criado_em', 'Criacao', 'criacao']);
-    const conversoesPorMes = countByMonth(convLogs, ['Data', 'data', 'DataConversao']);
-    const renovacoesPorMes = countByMonth(renLogs, ['Data', 'data', 'DataRenovacao']);
-
-    const testesPorTurno = countByTurno(testes, ['Criado_Em', 'criado_em', 'Criacao', 'criacao']);
-    const conversoesPorTurno = countByTurno(convLogs, ['Data', 'data', 'DataConversao']);
-    const renovacoesPorTurno = countByTurno(renLogs, ['Data', 'data', 'DataRenovacao']);
-
-    // Melhor dia baseado em conversões
-    let melhorDia = '-';
-    let melhorDiaCount = 0;
-    Object.entries(conversoesPorDia).forEach(([dia, count]) => {
-      if (count > melhorDiaCount) {
-        melhorDia = dia;
-        melhorDiaCount = count as number;
-      }
-    });
-
-    // Melhor turno baseado em conversões
-    let melhorTurno = '-';
-    let melhorTurnoCount = 0;
-    Object.entries(conversoesPorTurno).forEach(([turno, count]) => {
-      if (count > melhorTurnoCount) {
-        melhorTurno = turno;
-        melhorTurnoCount = count as number;
-      }
-    });
-
-    // Tempo médio até conversão (dias) por usuário
-    const tempoMedioAteConversao = (() => {
-      const testesPorUsuario: Record<string, Date> = {};
-      testes.forEach((t: any) => {
-        const user = t.Usuario || t.usuario;
-        const d = parseDate(t.Criado_Em || t.criado_em || t.Criacao || t.criacao);
-        if (user && d && (!testesPorUsuario[user] || d < testesPorUsuario[user])) {
-          testesPorUsuario[user] = d;
-        }
-      });
-      const diffs: number[] = [];
-      convLogs.forEach((c: any) => {
-        const user = c.Usuario || c.usuario;
-        const d = parseDate(c.Data || c.data || c.DataConversao);
-        if (user && d && testesPorUsuario[user]) {
-          const diff = daysDifference(testesPorUsuario[user], d);
-          if (diff >= 0) diffs.push(diff);
-        }
-      });
-      if (diffs.length === 0) return 0;
-      const soma = diffs.reduce((a, b) => a + b, 0);
-      return Math.round((soma / diffs.length) * 10) / 10;
-    })();
-
-    const heatmapHoraDia = buildHeatmapHoraDia(convLogs, ['Data', 'data', 'DataConversao']);
-
-    // Distribuição de status
-    const statusDistribution: Record<string, number> = {
-      Ativo: clientesAtivos,
-      Expirado: clientesExpirados,
-    };
-
-    return {
-      // Métricas principais
-      testes: testesCount,
-      conversoes: conversoesCount,
-      renovacoes: renovacoesCount,
-      clientesAtivos,
-      clientesExpirados,
-
-      // Taxas calculadas
-      taxaConversao: testesCount > 0 ? (conversoesCount / testesCount) * 100 : 0,
-      taxaFidelidade: totalRenovadores > 0 ? (clientesFieis / totalRenovadores) * 100 : 0,
-      churnRate: clientesAtivos + clientesExpirados > 0 ? (clientesExpirados / (clientesAtivos + clientesExpirados)) * 100 : 0,
-      taxaRetencao: clientesAtivos + clientesExpirados > 0 ? (clientesAtivos / (clientesAtivos + clientesExpirados)) * 100 : 0,
-
-      // Financeiro (placeholder)
-      ticketMedio: ticketMedioEstimado,
-      receitaMensal: clientesAtivos * ticketMedioEstimado,
-      receitaAnual: clientesAtivos * ticketMedioEstimado * 12,
-      receitaTotal: 0,
-      ltv: 0,
-      custoTotalConversoes: 0,
-      custoTotalRenovacoes: 0,
-      custoMedioConversao: 0,
-      custoMedioRenovacao: 0,
-      cac: 0,
-      roas: 0,
-      saldoMedioPosVenda,
-
-      // Análise por Plano (placeholder)
-      conversoesPorPlano: [],
-      renovacoesPorPlano: [],
-      mixPlanos: [],
-
-      // Temporal
-      melhorDia,
-      melhorDiaCount,
-      testesPorDia,
-      conversoesPorDia,
-      renovacoesPorDia,
-      testesPorMes,
-      conversoesPorMes,
-      renovacoesPorMes,
-      tempoMedioAteConversao,
-      heatmapHoraDia,
-
-      // Turnos
-      testesPorTurno,
-      conversoesPorTurno,
-      renovacoesPorTurno,
-      melhorTurno,
-      melhorTurnoCount,
-
-      // Geográfico (placeholder)
-      porEstado: [],
-      porDDD: [],
-      topEstados: [],
-      estadosCobertos: 0,
-
-      // Conexões (placeholder)
-      conexoesPorTipo: {},
-      mediaConexoes: 0,
-      maxConexoes: 0,
-
-      // Clientes (placeholder)
-      clientesFieis,
-      totalRenovadores,
-      clientesData: ativos,
-      recentClients: ativos.slice(0, 10),
-      distribuicaoRenovacoes: [],
-
-      // Análise de Status
-      statusDistribution,
-
-      // Revendedores (placeholder)
-      topRevendedores: [],
-
-      // Jogos (não aplicável no painel diretamente)
-      hasGamesData: false,
-      jogosAnalisados: 0,
-      jogosComConversoes: 0,
-      conversoesDuranteJogos: 0,
-      conversoesAntesJogos: 0,
-      conversoesDepoisJogos: 0,
-      topTimes: [],
-      porCompeticao: {},
-      impactoPorPeriodo: [],
-
-      // Raw data
-      rawData: {
-        testes,
-        conversoes: convLogs,
-        renovacoes: renLogs,
-        ativos,
-        expirados,
-        jogos: [],
-        convJogos: [],
-      },
-    };
-  }
 
   // Handler de logout
   const handleLogout = () => {
+    // Limpar localStorage
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('panel_cache_key');
-    localStorage.removeItem('panel_reseller_id');
-    localStorage.removeItem('panel_phpsessid');
+    localStorage.removeItem('cache_key');
+    localStorage.removeItem('phpsessid');
+    localStorage.removeItem('resellerid');
+    localStorage.removeItem('iptvDashboardData');
+    
+    // Limpar auth do hook
+    clearAuth();
+    
+    // Limpar estados
     setIsAuthenticated(false);
     setUserData(null);
     setDashboardData(null);
   };
-
-  /**
-   * Inicializa o fluxo de login do painel após autenticação do app.
-   *
-   * - NÃO chama `execute-all`; o backend já o executa em background após login.
-   * - Usa credenciais persistidas em `localStorage['gestorCredentials']` se presentes.
-   * - Persiste `panel_cache_key` e armazena o agregado em `localStorage['panel_cache_all']` quando pronto.
-   */
-  const bootstrapPainelAfterLogin = async () => {
-    try {
-      // Se já existe cache_key (definido pelo LoginView via /api/painel/login), apenas aguarda o cache
-      let cacheKey = localStorage.getItem('panel_cache_key') || undefined;
-
-      if (!cacheKey) {
-        // Tentar obter credenciais armazenadas na aba Clientes
-        const raw = localStorage.getItem('gestorCredentials');
-        if (raw) {
-          const creds = JSON.parse(raw);
-          const panelUsername: string | undefined = creds?.panelUsername;
-          const panelPassword: string | undefined = creds?.panelPassword;
-          if (panelUsername && panelPassword) {
-            // Login no painel (backend executa agregação em background)
-            const loginRes = await painelLogin({ username: panelUsername, password: panelPassword });
-            cacheKey = loginRes?.cache_key || localStorage.getItem('panel_cache_key') || undefined;
-          }
-        }
-      }
-
-      if (!cacheKey) return;
-
-      // Aguarda o cache agregado ficar pronto e persiste para consumo posterior
-      const agg = await waitCacheReady(cacheKey, 10, 1500);
-      if (agg) {
-        try { localStorage.setItem('panel_cache_all', JSON.stringify(agg)); } catch {}
-        // Atualiza o estado do dashboard com os dados do painel
-        try { setDashboardData(buildDashboardDataFromPanel(agg)); } catch (e) { console.warn('Falha ao mapear dados do painel:', e); }
-      }
-    } catch (err) {
-      console.warn('Falha ao inicializar painel após login:', err);
-    }
-  };
-
-  // Quando autenticado, tenta carregar `panel_cache_all` existente e popular o dashboard
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (dashboardData) return;
-    try {
-      const raw = localStorage.getItem('panel_cache_all');
-      if (raw) {
-        const agg = JSON.parse(raw) as CacheAllAggregate;
-        setDashboardData(buildDashboardDataFromPanel(agg));
-      }
-    } catch (e) {
-      console.warn('Falha ao ler panel_cache_all do localStorage:', e);
-    }
-  }, [isAuthenticated, dashboardData]);
 
   useEffect(() => {
     // Tentar carregar dados do localStorage
@@ -551,28 +250,6 @@ export default function App() {
       localStorage.removeItem('iptvDashboardData');
     }
   }, []);
-
-  // Dispara bootstrap do painel após autenticação
-  useEffect(() => {
-    if (isAuthenticated) {
-      bootstrapPainelAfterLogin();
-    }
-  }, [isAuthenticated]);
-
-  // Quando autenticado, tenta carregar `panel_cache_all` existente e popular o dashboard
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (dashboardData) return;
-    try {
-      const raw = localStorage.getItem('panel_cache_all');
-      if (raw) {
-        const agg = JSON.parse(raw) as CacheAllAggregate;
-        setDashboardData(buildDashboardDataFromPanel(agg));
-      }
-    } catch (e) {
-      console.warn('Falha ao ler panel_cache_all do localStorage:', e);
-    }
-  }, [isAuthenticated, dashboardData]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1332,28 +1009,18 @@ export default function App() {
     XLSX.writeFile(wb, 'relatorio-iptv-analytics.xlsx');
   };
 
+  // ✅ TODAS AS ABAS SEMPRE VISÍVEIS (Menu Completo Aberto)
   const tabs = [
     { id: 'dashboard', label: 'Overview', icon: BarChart3 },
     { id: 'financial', label: 'Financeiro', icon: DollarSign },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'retention', label: 'Retenção', icon: Activity },
     { id: 'conversion', label: 'Conversão', icon: TrendingUp },
+    { id: 'games', label: 'Jogos', icon: Trophy },
+    { id: 'geographic', label: 'Geográfico', icon: MapPin },
+    { id: 'traffic', label: 'Tráfego', icon: Clock },
+    { id: 'tracking', label: 'Pixel', icon: Activity },
   ];
-
-  if (dashboardData && dashboardData.estadosCobertos > 0) {
-    tabs.push({ id: 'geographic', label: 'Geográfico', icon: MapPin });
-  }
-
-  if (dashboardData && Object.keys(dashboardData.testesPorTurno || {}).length > 0) {
-    tabs.push({ id: 'traffic', label: 'Tráfego', icon: Clock });
-  }
-
-  if (dashboardData?.hasGamesData) {
-    tabs.push({ id: 'games', label: 'Jogos', icon: Trophy });
-  }
-
-  // Adicionar aba de Rastreamento (Em Breve)
-  tabs.push({ id: 'tracking', label: 'Pixel', icon: Activity });
 
   // Extrair nome da revenda
   const nomeRevenda = dashboardData?.rawData?.ativos?.[0]?.Revenda || 
@@ -1362,11 +1029,11 @@ export default function App() {
                       dashboardData?.rawData?.ativos?.[0]?.revendedor ||
                       dashboardData?.topRevendedores?.[0]?.revendedor || '';
 
-  // Se não estiver autenticado, mostrar tela de login
-  if (!isAuthenticated) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
-  }
-
+  // ✅ LOGIN REMOVIDO - Dashboard totalmente aberto
+  // A autenticação será sincronizada via backend futuramente
+  // if (!isAuthenticated) {
+  //   return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  // }
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -1441,13 +1108,6 @@ export default function App() {
                 onChange={handleFileUpload}
                 className="hidden"
               />
-              <Button 
-                onClick={handleLogout} 
-                variant="outline" 
-                className="bg-[#121726] border-[#1E2840] text-[#ff4a9a] hover:bg-[#1A2035] hover:border-[#ff4a9a] transition-all"
-              >
-                Sair
-              </Button>
             </div>
           </div>
         </div>
@@ -1528,23 +1188,7 @@ export default function App() {
           <main className="max-w-7xl mx-auto px-6 py-6">
             {activeTab === 'dashboard' && <IPTVDashboard data={dashboardData} onNavigateToGames={() => setActiveTab('games')} />}
             {activeTab === 'financial' && <FinancialView data={dashboardData} />}
-        {activeTab === 'clients' && (
-          dashboardData ? (
-            <ClientsView data={dashboardData} />
-          ) : (
-            <div className="p-10">
-              <Card className="max-w-xl mx-auto p-8 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] text-center">
-                <div className="flex items-center justify-center mb-4">
-                  <Loader2 className="w-6 h-6 text-[#7B5CFF] animate-spin" />
-                </div>
-                <h3 className="text-[#EAF2FF] font-semibold">Carregando dados do painel</h3>
-                <p className="text-[#8ea9d9] text-sm mt-2">
-                  Aguarde alguns instantes enquanto sincronizamos seus clientes ativos e expirados.
-                </p>
-              </Card>
-            </div>
-          )
-        )}
+            {activeTab === 'clients' && <ClientsView data={dashboardData} />}
             {activeTab === 'retention' && <RetentionView data={dashboardData} />}
             {activeTab === 'conversion' && <ConversionView data={dashboardData} />}
             {activeTab === 'geographic' && <GeographicView data={dashboardData} />}

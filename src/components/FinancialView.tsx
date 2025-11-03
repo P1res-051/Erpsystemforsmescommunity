@@ -2,6 +2,7 @@ import { Card } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { FacebookAdsCalendar } from './FacebookAdsCalendar';
 import { TrafficAnalytics } from './TrafficAnalytics';
+import { ExportReportsCard } from './ExportReportsCard';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
@@ -2356,9 +2357,12 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
                 </div>
 
                 <div>
-                  <h2 className="text-white mb-2">Distribuição de Receita por Plano</h2>
+                  <h2 className="text-white mb-2 flex items-center gap-2">
+                    <span>💎</span>
+                    <span>Distribuição de Receita por Planos</span>
+                  </h2>
                   <p className="text-slate-500 text-sm mb-4">
-                    💡 Qual tipo de assinatura gera mais receita para o seu negócio
+                    Entenda quais tipos de assinatura geram maior faturamento e margens mais saudáveis
                   </p>
                   <Card 
                     className="p-6 border-[rgba(255,255,255,0.05)] hover:shadow-lg transition-all duration-200"
