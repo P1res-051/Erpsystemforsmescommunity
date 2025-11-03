@@ -1,0 +1,468 @@
+openapi: 3.0.3
+info:
+  title: BestExport API
+  description: |
+    API para autenticação no painel.best, agregação de clientes/logs em cache Redis e consulta de jogos.
+    Este documento especifica todos os endpoints, modelos (DTOs), autenticação, exemplos de requisição e resposta.
+  version: 2.1.0
+servers:
+  - url: https://automatixbest-api.automation.app.br
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: PHPSESSID
+  schemas:
+    ClientDto:
+      type: object
+      description: Cliente simplificado mapeado a partir do upstream `get_clients`.
+      properties:
+        Usuario:
+          type: string
+          example: cliente123
+        Senha:
+          type: string
+          example: s3nh@F0rte
+        Email:
+          type: string
+          format: email
+          example: cliente@example.com
+        Criado_Em:
+          type: string
+          example: 2024-10-01 12:34:56
+        Expira_Em:
+          type: string
+          example: 2025-01-01 00:00:00
+        Reseller:
+          type: string
+          example: Parceiro Norte
+        Max_Conn:
+          type: integer
+          example: 2
+        Anotacoes:
+          type: string
+          example: "DDD: 11; UF: SP; vinculado campanha X"
+        Status:
+          type: string
+          example: enabled
+        DDD:
+          type: string
+          example: "11"
+        UF:
+          type: string
+          example: SP
+    LogDto:
+      type: object
+      description: Log simplificado mapeado a partir de `get_reseller_log`.
+      properties:
+        Usuario:
+          type: string
+          example: cliente123
+        Owner:
+          type: string
+          example: parceiroA
+        Tipo:
+          type: string
+          example: trial
+        Acao:
+          type: string
+          example: trial-conversion
+        Custo:
+          type: number
+          format: float
+          example: 9.9
+        Creditos_Apos:
+          type: number
+          format: float
+          example: 100.0
+        Data:
+          type: string
+          example: 2024-10-02 09:00:00
+    Team:
+      type: object
+      properties:
+        nome:
+          type: string
+        brasao:
+          type: string
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+        campeonato:
+          type: string
+        horario:
+          type: string
+        time_casa:
+          $ref: '#/components/schemas/Team'
+        time_fora:
+          $ref: '#/components/schemas/Team'
+        placar_casa:
+          type: string
+          nullable: true
+        placar_fora:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: "1=Programado, 2=Ao vivo, 3=Encerrado"
+        estadio:
+          type: string
+        canais:
+          type: string
+        is_big_game:
+          type: boolean
+        status_text:
+          type: string
+    UpdaterJob:
+      type: object
+      properties:
+        cache_key:
+          type: string
+          example: panel:data:usuarioX
+        user:
+          type: string
+          example: usuarioX
+        reseller:
+          type: string
+          example: 123
+    StopJobRequest:
+      type: object
+      properties:
+        user:
+          type: string
+      required: [user]
+    StopJobResponse:
+      type: object
+      properties:
+        stopped:
+          type: string
+          example: usuarioX
+    ExecuteAllResponse:
+      type: object
+      properties:
+        cache_key:
+          type: string
+          example: panel:data:usuarioX
+        items:
+          type: object
+          properties:
+            ativos:
+              type: integer
+              example: 10
+            expirados:
+              type: integer
+              example: 5
+            testes:
+              type: integer
+              example: 2
+            conversoes:
+              type: integer
+              example: 3
+            renovacoes:
+              type: integer
+              example: 7
+    CacheAllAggregate:
+      type: object
+      description: Objeto agregado completo persistido no Redis para `panel:data:<user>`.
+      properties:
+        ativos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientDto'
+        expirados:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientDto'
+        testes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientDto'
+        conversoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogDto'
+        renovacoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogDto'
+        usuario:
+          type: string
+          example: usuarioX
+        reseller:
+          type: string
+          example: 123
+paths:
+  /api/jogos:
+    get:
+      summary: Lista jogos do dia (UOL JSON)
+      description: |
+        Retorna jogos consultando a API pública da UOL sem uso de Selenium/Playwright.
+        Permite filtrar por data no formato `DD-MM-YYYY`. Se omitida, usa o dia atual.
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            example: 02-01-2006
+          required: false
+          description: Data dos jogos (formato DD-MM-YYYY).
+      responses:
+        "200":
+          description: Lista de jogos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      date:
+                        type: string
+                      total_games:
+                        type: integer
+                      games:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Game'
+                      cached:
+                        type: boolean
+                        description: Indica se a resposta veio do cache
+        "502":
+          description: Erro ao consultar fonte externa
+  /api/painel/login:
+    post:
+      summary: Autentica diretamente no painel.best e retorna sessão
+      description: |
+        Faz login no painel.thebest usando credenciais do próprio painel e retorna:
+        - `phpsessid` (cookie de sessão)
+        - `cache_key = panel:data:<user>` (chave para agregados no Redis)
+        - `resellerid` (primeiro reseller detectado)
+        
+        Credenciais podem ser enviadas por `Authorization: Basic <base64(user:pass)>` ou no corpo JSON.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+            example:
+              username: painel_user
+              password: painel_pass
+      responses:
+        "200":
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  phpsessid:
+                    type: string
+                  cache_key:
+                    type: string
+                  resellerid:
+                    type: string
+              example:
+                phpsessid: abcdef1234567890
+                cache_key: panel:data:usuarioX
+                resellerid: "123"
+        "400":
+          description: Erro de autenticação
+  /api/painel/execute-all:
+    post:
+      summary: Executa agregação de clientes e logs e salva no cache
+      description: |
+        Consulta clientes ativos, expirados, em teste e logs (conversões, renovações) e
+        persiste no Redis sob a chave `cache_key` correspondente.
+        Informe apenas `cache_key=panel:data:<user>`. A sessão (`PHPSESSID`) será localizada no Redis.
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+          description: Chave `panel:data:<user>`; usada para localizar a sessão previamente armazenada
+      responses:
+        "200":
+          description: Chave e contagem por categoria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteAllResponse'
+        "400":
+          description: Erro na agregação (sessão/chave ausentes ou upstream indisponível)
+  /api/painel/cache-all:
+    get:
+      summary: Retorna o agregado completo de cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+          description: Chave do Redis (`panel:data:<user>`) referente ao agregado.
+      responses:
+        "200":
+          description: Objeto agregado completo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheAllAggregate'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave não encontrada
+  /api/painel/get-clients-active:
+    get:
+      summary: Retorna clientes ativos do cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+          description: Chave do Redis (`panel:data:<user>`) referente ao agregado.
+      responses:
+        "200":
+          description: Lista de clientes ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientDto'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave ou categoria não encontrada
+  /api/painel/get-clients-expired:
+    get:
+      summary: Retorna clientes expirados do cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Lista de clientes expirados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientDto'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave ou categoria não encontrada
+  /api/painel/get-clients-test:
+    get:
+      summary: Retorna clientes em teste do cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Lista de clientes em teste
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientDto'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave ou categoria não encontrada
+  /api/painel/get-conversions:
+    get:
+      summary: Retorna conversões do cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Lista de conversões
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogDto'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave ou categoria não encontrada
+  /api/painel/get-renewals:
+    get:
+      summary: Retorna renovações do cache
+      parameters:
+        - in: query
+          name: cache_key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Lista de renovações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogDto'
+        "400":
+          description: Parâmetro ausente ou cache indisponível
+        "404":
+          description: Chave ou categoria não encontrada
+  /api/painel/updater/jobs:
+    get:
+      summary: Lista jobs ativos do updater
+      responses:
+        "200":
+          description: Array de jobs ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpdaterJob'
+  /api/painel/updater/stop:
+    post:
+      summary: Encerra o job de um usuário específico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopJobRequest'
+            example:
+              user: usuarioX
+      responses:
+        "200":
+          description: Job interrompido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopJobResponse'
+        "400":
+          description: Requisição inválida (campo user ausente)
