@@ -226,86 +226,89 @@ export function TrafficAnalytics({ spends, data }: Props) {
         </ResponsiveContainer>
       </Card>
 
-      {/* Grid: Pizza + Barras */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de Pizza: Distribuição */}
-        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
-          <h3 className="text-[#EAF2FF] mb-4" style={{ fontWeight: 600 }}>
-            🥧 Distribuição: Tráfego vs Base
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0f1621',
-                  border: '1px solid #1e2a44',
-                  borderRadius: '8px',
-                  color: '#EAF2FF'
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="text-center mt-4">
-            <p className="text-[#8ea9d9] text-xs">
-              Mix: <span style={{ color: COLORS.receitaTrafego, fontWeight: 600 }}>
-                {totalConversoes > 0 ? ((totalConversoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(1) : 0}% Tráfego
-              </span>
-              {' | '}
-              <span style={{ color: COLORS.receitaBase, fontWeight: 600 }}>
-                {totalRenovacoes > 0 ? ((totalRenovacoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(1) : 0}% Base
-              </span>
+      {/* Grid: 3 KPIs Modernos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* KPI 1: ROI Médio */}
+        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00d18f15] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[#8ea9d9] text-xs uppercase tracking-wider">ROI Médio</span>
+              <span className="text-2xl">📈</span>
+            </div>
+            <p className="text-4xl mb-2" style={{ color: COLORS.roi, textShadow: '0 0 20px rgba(0,255,163,0.4)' }}>
+              {daysWithSpend.length > 0 
+                ? (daysWithSpend.reduce((sum, d) => sum + d.roi, 0) / daysWithSpend.length).toFixed(2)
+                : '0.00'}x
+            </p>
+            <p className="text-[#6B7694] text-xs">
+              Retorno sobre investimento (últimos 7 dias)
             </p>
           </div>
         </Card>
 
-        {/* Gráfico de Barras: ROI e CPL */}
-        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl">
-          <h3 className="text-[#EAF2FF] mb-4" style={{ fontWeight: 600 }}>
-            📊 ROI e CPL (últimos 7 dias com gasto)
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={daysWithSpend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#8ea9d9"
-                tick={{ fill: '#8ea9d9', fontSize: 10 }}
-              />
-              <YAxis 
-                stroke="#8ea9d9"
-                tick={{ fill: '#8ea9d9', fontSize: 11 }}
-              />
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0f1621',
-                  border: '1px solid #1e2a44',
-                  borderRadius: '8px',
-                  color: '#EAF2FF'
-                }}
-                formatter={(value: any, name: string) => {
-                  if (name === 'ROI') return [`${value.toFixed(2)}x`, 'ROI'];
-                  return [`R$ ${value.toFixed(2)}`, 'CPL'];
-                }}
-              />
-              <Legend />
-              <Bar dataKey="roi" fill={COLORS.roi} name="ROI" />
-              <Bar dataKey="cpl" fill={COLORS.cpl} name="CPL (R$)" />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* KPI 2: CPL Médio */}
+        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#ff4f6b15] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[#8ea9d9] text-xs uppercase tracking-wider">CPL Médio</span>
+              <span className="text-2xl">💰</span>
+            </div>
+            <p className="text-4xl mb-2" style={{ color: COLORS.cpl, textShadow: '0 0 20px rgba(255,79,107,0.4)' }}>
+              R$ {daysWithSpend.length > 0 
+                ? (daysWithSpend.reduce((sum, d) => sum + d.cpl, 0) / daysWithSpend.length).toFixed(2)
+                : '0.00'}
+            </p>
+            <p className="text-[#6B7694] text-xs">
+              Custo por lead gerado (últimos 7 dias)
+            </p>
+          </div>
+        </Card>
+
+        {/* KPI 3: Mix Tráfego vs Base */}
+        <Card className="p-6 bg-gradient-to-br from-[#10182b] to-[#0b0f19] border-[#1e2a44] shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00BFFF15] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[#8ea9d9] text-xs uppercase tracking-wider">Mix de Conversões</span>
+              <span className="text-2xl">🎯</span>
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex-1">
+                <div className="h-8 bg-[#1e2a44] rounded-lg overflow-hidden flex">
+                  <div 
+                    className="bg-gradient-to-r from-[#00d18f] to-[#00d18f80] flex items-center justify-center text-white text-xs transition-all"
+                    style={{ 
+                      width: `${totalConversoes > 0 ? ((totalConversoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(1) : 0}%`
+                    }}
+                  >
+                    {totalConversoes > 0 && ((totalConversoes / (totalConversoes + totalRenovacoes)) * 100) > 15 && (
+                      <span>{((totalConversoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                  <div 
+                    className="bg-gradient-to-r from-[#ffb64d80] to-[#ffb64d] flex items-center justify-center text-white text-xs transition-all"
+                    style={{ 
+                      width: `${totalRenovacoes > 0 ? ((totalRenovacoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(1) : 0}%`
+                    }}
+                  >
+                    {totalRenovacoes > 0 && ((totalRenovacoes / (totalConversoes + totalRenovacoes)) * 100) > 15 && (
+                      <span>{((totalRenovacoes / (totalConversoes + totalRenovacoes)) * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span style={{ color: COLORS.receitaTrafego }}>
+                ⚡ {totalConversoes} Tráfego
+              </span>
+              <span style={{ color: COLORS.receitaBase }}>
+                🔄 {totalRenovacoes} Base
+              </span>
+            </div>
+          </div>
         </Card>
       </div>
     </div>

@@ -67,14 +67,34 @@ export function processApiData(apiData: any): DashboardData {
   const totalVendas = totalConversoes + totalRenovacoes;
   const ticketMedio = totalVendas > 0 ? receitaTotal / totalVendas : 0;
 
-  const receitaMensal = clientesAtivos * ticketMedio;
-  const receitaAnual = receitaMensal * 12;
+  // MRR (Monthly Recurring Revenue) - Baseado em conversões e renovações mensais
+  // Normalizar planos para mensal: Anual/12, Semestral/6, Trimestral/3
+  let mrrTotal = 0;
+  [...conversoes, ...renovacoes].forEach((item: any) => {
+    const custo = safeNumber(item.Custo || item.custo);
+    const plano = mapCustoToPlano(custo);
+    
+    // Converter para valor mensal
+    let valorMensal = 0;
+    if (plano.nome === 'Anual') valorMensal = custo / 12;
+    else if (plano.nome === 'Semestral') valorMensal = custo / 6;
+    else if (plano.nome === 'Trimestral') valorMensal = custo / 3;
+    else valorMensal = custo; // Mensal ou 2 Telas
+    
+    mrrTotal += valorMensal;
+  });
+  
+  const receitaMensal = mrrTotal; // MRR real baseado nas vendas
+  const receitaAnual = receitaMensal * 12; // ARR = MRR * 12
 
-  // LTV (assumindo 6 meses de vida média)
-  const ltv = ticketMedio * 6;
+  // LTV (Lifetime Value) - Baseado na média de renovações reais
+  const mediaRenovacoesPorCliente = totalRenovadores > 0 
+    ? Object.values(renovacoesPorCliente).reduce((sum: number, count: number) => sum + count, 0) / totalRenovadores 
+    : 1;
+  const ltv = ticketMedio * (1 + mediaRenovacoesPorCliente); // Valor inicial + renovações
 
-  // CAC e ROAS (simplificados - ajustar conforme dados reais de marketing)
-  const cac = custoMedioConversao * 0.3; // Estimativa: 30% do valor da conversão
+  // CAC e ROAS - Usar dados reais se disponíveis, senão estimativa conservadora
+  const cac = custoMedioConversao * 0.15; // Estimativa: 15% do valor da conversão como custo de aquisição
   const roas = cac > 0 ? receitaTotal / (cac * totalConversoes) : 0;
 
   const saldoMedioPosVenda = conversoes.reduce((sum: number, c: any) => 

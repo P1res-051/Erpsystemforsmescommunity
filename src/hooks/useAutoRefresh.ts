@@ -35,7 +35,7 @@ export function useAutoRefresh(
           setAuthData({ cache_key, phpsessid, resellerid });
         }
       } catch (err) {
-        console.error('Erro ao carregar dados de autenticação:', err);
+        console.log('💾 Sessão não encontrada');
       }
     };
 
@@ -45,7 +45,7 @@ export function useAutoRefresh(
   // Função principal de busca de dados
   const fetchPainelData = useCallback(async () => {
     if (!authData?.cache_key) {
-      console.warn('Cache key não encontrado. Faça login primeiro.');
+      console.log('⏳ Aguardando autenticação...');
       return;
     }
 
@@ -110,7 +110,7 @@ export function useAutoRefresh(
 
     } catch (err: any) {
       const errorMessage = err.message || 'Erro ao atualizar dados';
-      console.error('❌ Erro no refresh:', errorMessage);
+      console.log('⚠️ Falha na sincronização:', errorMessage);
       setError(errorMessage);
 
       // Se sessão expirou, limpar dados de autenticação

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Upload, BarChart3, TrendingUp, Users, DollarSign, Activity, Trophy, FileDown, MapPin, Clock } from 'lucide-react';
+import { Upload, BarChart3, TrendingUp, Users, DollarSign, Activity, Trophy, FileDown, MapPin, Clock, RefreshCw, LogOut } from 'lucide-react';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { IPTVDashboard } from './components/IPTVDashboard';
@@ -150,8 +150,103 @@ export default function App() {
     
     setDashboardData(processedData);
     
-    // Salvar no localStorage
-    localStorage.setItem('iptvDashboardData', JSON.stringify(processedData));
+    // Salvar no localStorage com estratégia segura
+    try {
+      // Calcular tamanho aproximado dos dados
+      const dataString = JSON.stringify(processedData);
+      const estimatedSize = dataString.length;
+      const maxSize = 3 * 1024 * 1024; // 3MB (seguro para localStorage)
+      
+      console.log(`📊 Tamanho dos dados: ${(estimatedSize / 1024).toFixed(2)} KB`);
+      
+      if (estimatedSize > maxSize) {
+        console.log('💾 Otimizando armazenamento: salvando métricas essenciais...');
+        
+        // Salvar apenas métricas calculadas (SEM rawData)
+        const essentialData = {
+          testes: processedData.testes,
+          conversoes: processedData.conversoes,
+          renovacoes: processedData.renovacoes,
+          clientesAtivos: processedData.clientesAtivos,
+          clientesExpirados: processedData.clientesExpirados,
+          taxaConversao: processedData.taxaConversao,
+          taxaFidelidade: processedData.taxaFidelidade,
+          churnRate: processedData.churnRate,
+          taxaRetencao: processedData.taxaRetencao,
+          ticketMedio: processedData.ticketMedio,
+          receitaMensal: processedData.receitaMensal,
+          receitaAnual: processedData.receitaAnual,
+          receitaTotal: processedData.receitaTotal,
+          ltv: processedData.ltv,
+          porEstado: processedData.porEstado?.slice(0, 30) || [],
+          conversoesPorPlano: processedData.conversoesPorPlano?.slice(0, 10) || [],
+          renovacoesPorPlano: processedData.renovacoesPorPlano?.slice(0, 10) || [],
+          // NÃO salvar rawData para economizar espaço
+          rawData: {
+            testes: [],
+            conversoes: [],
+            renovacoes: [],
+            ativos: [],
+            expirados: [],
+            jogos: [],
+            convJogos: [],
+          },
+          clientesData: [],
+          recentClients: [],
+        };
+        
+        localStorage.setItem('iptvDashboardData', JSON.stringify(essentialData));
+        console.log('✅ Cache otimizado salvo');
+      } else {
+        // Dados cabem, mas ainda vamos limitar rawData
+        const dataToSave = {
+          ...processedData,
+          rawData: {
+            testes: processedData.rawData?.testes?.slice(0, 30) || [],
+            conversoes: processedData.rawData?.conversoes?.slice(0, 30) || [],
+            renovacoes: processedData.rawData?.renovacoes?.slice(0, 100) || [],
+            ativos: processedData.rawData?.ativos?.slice(0, 200) || [],
+            expirados: processedData.rawData?.expirados?.slice(0, 100) || [],
+            jogos: processedData.rawData?.jogos?.slice(0, 20) || [],
+            convJogos: processedData.rawData?.convJogos?.slice(0, 20) || [],
+          },
+          clientesData: processedData.clientesData?.slice(0, 50) || [],
+          recentClients: processedData.recentClients?.slice(0, 20) || [],
+        };
+        
+        localStorage.setItem('iptvDashboardData', JSON.stringify(dataToSave));
+        console.log('✅ Cache salvo com sucesso');
+      }
+    } catch (storageError: any) {
+      console.log('💾 Ajustando cache para espaço disponível...');
+      
+      // Tentar limpar e salvar apenas o mínimo
+      try {
+        localStorage.removeItem('iptvDashboardData');
+        
+        // Salvar APENAS as métricas principais (sem arrays)
+        const minimalData = {
+          testes: processedData.testes,
+          conversoes: processedData.conversoes,
+          renovacoes: processedData.renovacoes,
+          clientesAtivos: processedData.clientesAtivos,
+          clientesExpirados: processedData.clientesExpirados,
+          taxaConversao: processedData.taxaConversao,
+          ticketMedio: processedData.ticketMedio,
+          receitaMensal: processedData.receitaMensal,
+          receitaAnual: processedData.receitaAnual,
+          rawData: { testes: [], conversoes: [], renovacoes: [], ativos: [], expirados: [], jogos: [], convJogos: [] },
+          clientesData: [],
+          recentClients: [],
+        };
+        
+        localStorage.setItem('iptvDashboardData', JSON.stringify(minimalData));
+        console.log('✅ Cache otimizado salvo');
+      } catch (e) {
+        // Silenciosamente continuar sem cache
+        console.log('💾 Executando sem cache local (dados em memória)');
+      }
+    }
   }, []);
 
   // Hook de auto-refresh (5 minutos)
@@ -262,14 +357,16 @@ export default function App() {
       const processedData = processExcelData(workbook);
       setDashboardData(processedData);
       
-      // Salvar no localStorage (com TODA a base para análise geográfica completa)
+      // Salvar no localStorage com otimização automática
       try {
         // Calcular tamanho aproximado dos dados
         const estimatedSize = JSON.stringify(processedData).length;
         const maxSize = 4 * 1024 * 1024; // 4MB (seguro para localStorage)
         
+        console.log(`📊 Arquivo processado: ${(estimatedSize / 1024).toFixed(2)} KB`);
+        
         if (estimatedSize > maxSize) {
-          // Dados muito grandes - salvar apenas métricas essenciais (silenciosamente)
+          // Dados grandes - otimizar para cache
           const essentialData = {
             testes: processedData.testes,
             conversoes: processedData.conversoes,
@@ -297,8 +394,9 @@ export default function App() {
             recentClients: processedData.recentClients.slice(0, 10),
           };
           localStorage.setItem('iptvDashboardData', JSON.stringify(essentialData));
+          console.log('✅ Cache otimizado (métricas principais)');
         } else {
-          // Dados são pequenos o suficiente, salvar com limites reduzidos
+          // Dados em tamanho adequado
           const dataToSave = {
             ...processedData,
             rawData: {
@@ -314,10 +412,11 @@ export default function App() {
             recentClients: processedData.recentClients.slice(0, 20),
           };
           localStorage.setItem('iptvDashboardData', JSON.stringify(dataToSave));
+          console.log('✅ Cache salvo com sucesso');
         }
       } catch (storageError) {
-        // Erro silencioso - não mostrar para o usuário
-        // Limpar localStorage se estiver cheio
+        // Continuar sem cache
+        console.log('💾 Executando sem cache (dados em memória)');
         try {
           localStorage.removeItem('iptvDashboardData');
         } catch (e) {
@@ -804,12 +903,39 @@ export default function App() {
       data.ticketMedio = data.receitaTotal / totalVendas;
     }
     
-    // MRR e ARR (estimativa baseada em clientes ativos × ticket médio)
-    data.receitaMensal = data.clientesAtivos * data.ticketMedio;
+    // MRR e ARR (calculado a partir das vendas reais normalizadas para mensal)
+    let mrrCalculado = 0;
+    
+    // Processar conversões
+    data.conversoesPorPlano.forEach(plano => {
+      const valorMensal = plano.plano === 'Anual' ? plano.receita / 12 
+        : plano.plano === 'Semestral' ? plano.receita / 6
+        : plano.plano === 'Trimestral' ? plano.receita / 3
+        : plano.receita; // Mensal ou 2 Telas
+      mrrCalculado += valorMensal;
+    });
+    
+    // Processar renovações
+    data.renovacoesPorPlano.forEach(plano => {
+      const valorMensal = plano.plano === 'Anual' ? plano.receita / 12 
+        : plano.plano === 'Semestral' ? plano.receita / 6
+        : plano.plano === 'Trimestral' ? plano.receita / 3
+        : plano.receita; // Mensal ou 2 Telas
+      mrrCalculado += valorMensal;
+    });
+    
+    data.receitaMensal = mrrCalculado || (data.clientesAtivos * data.ticketMedio); // Fallback
     data.receitaAnual = data.receitaMensal * 12;
     
-    // LTV (ticket médio × 6 meses)
-    data.ltv = data.ticketMedio * 6;
+    // LTV (baseado em média real de renovações)
+    const mediaRenovacoes = data.distribuicaoRenovacoes.length > 0
+      ? data.distribuicaoRenovacoes.reduce((sum, item) => {
+          const num = parseInt(item.categoria.match(/\d+/)?.[0] || '0');
+          return sum + (num * item.count);
+        }, 0) / data.renovacoes
+      : 2; // Default: 2 renovações por cliente
+    
+    data.ltv = data.ticketMedio * (1 + mediaRenovacoes);
     
     // CAC e ROAS
     const custoTotal = data.custoTotalConversoes + data.custoTotalRenovacoes;
@@ -1029,11 +1155,11 @@ export default function App() {
                       dashboardData?.rawData?.ativos?.[0]?.revendedor ||
                       dashboardData?.topRevendedores?.[0]?.revendedor || '';
 
-  // ✅ LOGIN REMOVIDO - Dashboard totalmente aberto
-  // A autenticação será sincronizada via backend futuramente
-  // if (!isAuthenticated) {
-  //   return <LoginView onLoginSuccess={handleLoginSuccess} />;
-  // }
+  // ✅ VERIFICAÇÃO DE AUTENTICAÇÃO
+  // Se não autenticado, mostrar tela de login
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950">

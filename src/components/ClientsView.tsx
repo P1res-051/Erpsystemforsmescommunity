@@ -2355,6 +2355,215 @@ export function ClientsView({ data }: Props) {
               </Card>
             </div>
           )}
+
+          {/* Seção: Localização - Mapa de DDD */}
+          {activeSection === 'localizacao' && (
+            <div className="space-y-6">
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-[#EAF2FF] mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5" style={{ color: COLORS.azul }} />
+                  <span>Distribuição por DDD</span>
+                </h3>
+                <p className="text-[#9FAAC6] text-sm mb-6">
+                  Análise geográfica baseada nos logins dos clientes (55 + DDD + número)
+                </p>
+
+                {(() => {
+                  // Extrair DDD dos clientes (pegar 3º e 4º dígito de logins que começam com 55)
+                  const dddMap: Record<string, { count: number; estado: string; regiao: string }> = {};
+                  
+                  // Mapeamento DDD -> Estado/Região
+                  const dddInfo: Record<string, { estado: string; regiao: string }> = {
+                    '11': { estado: 'SP', regiao: 'São Paulo' },
+                    '12': { estado: 'SP', regiao: 'Vale do Paraíba' },
+                    '13': { estado: 'SP', regiao: 'Baixada Santista' },
+                    '14': { estado: 'SP', regiao: 'Bauru/Marília' },
+                    '15': { estado: 'SP', regiao: 'Sorocaba' },
+                    '16': { estado: 'SP', regiao: 'Ribeirão Preto' },
+                    '17': { estado: 'SP', regiao: 'São José do Rio Preto' },
+                    '18': { estado: 'SP', regiao: 'Presidente Prudente' },
+                    '19': { estado: 'SP', regiao: 'Campinas' },
+                    '21': { estado: 'RJ', regiao: 'Rio de Janeiro' },
+                    '22': { estado: 'RJ', regiao: 'Campos dos Goytacazes' },
+                    '24': { estado: 'RJ', regiao: 'Volta Redonda' },
+                    '27': { estado: 'ES', regiao: 'Vitória' },
+                    '28': { estado: 'ES', regiao: 'Cachoeiro' },
+                    '31': { estado: 'MG', regiao: 'Belo Horizonte' },
+                    '32': { estado: 'MG', regiao: 'Juiz de Fora' },
+                    '33': { estado: 'MG', regiao: 'Governador Valadares' },
+                    '34': { estado: 'MG', regiao: 'Uberlândia' },
+                    '35': { estado: 'MG', regiao: 'Poços de Caldas' },
+                    '37': { estado: 'MG', regiao: 'Divinópolis' },
+                    '38': { estado: 'MG', regiao: 'Montes Claros' },
+                    '41': { estado: 'PR', regiao: 'Curitiba' },
+                    '42': { estado: 'PR', regiao: 'Ponta Grossa' },
+                    '43': { estado: 'PR', regiao: 'Londrina' },
+                    '44': { estado: 'PR', regiao: 'Maringá' },
+                    '45': { estado: 'PR', regiao: 'Foz do Iguaçu' },
+                    '46': { estado: 'PR', regiao: 'Francisco Beltrão' },
+                    '47': { estado: 'SC', regiao: 'Joinville' },
+                    '48': { estado: 'SC', regiao: 'Florianópolis' },
+                    '49': { estado: 'SC', regiao: 'Chapecó' },
+                    '51': { estado: 'RS', regiao: 'Porto Alegre' },
+                    '53': { estado: 'RS', regiao: 'Pelotas' },
+                    '54': { estado: 'RS', regiao: 'Caxias do Sul' },
+                    '55': { estado: 'RS', regiao: 'Santa Maria' },
+                    '61': { estado: 'DF', regiao: 'Brasília' },
+                    '62': { estado: 'GO', regiao: 'Goiânia' },
+                    '63': { estado: 'TO', regiao: 'Palmas' },
+                    '64': { estado: 'GO', regiao: 'Rio Verde' },
+                    '65': { estado: 'MT', regiao: 'Cuiabá' },
+                    '66': { estado: 'MT', regiao: 'Rondonópolis' },
+                    '67': { estado: 'MS', regiao: 'Campo Grande' },
+                    '68': { estado: 'AC', regiao: 'Rio Branco' },
+                    '69': { estado: 'RO', regiao: 'Porto Velho' },
+                    '71': { estado: 'BA', regiao: 'Salvador' },
+                    '73': { estado: 'BA', regiao: 'Ilhéus' },
+                    '74': { estado: 'BA', regiao: 'Juazeiro' },
+                    '75': { estado: 'BA', regiao: 'Feira de Santana' },
+                    '77': { estado: 'BA', regiao: 'Barreiras' },
+                    '79': { estado: 'SE', regiao: 'Aracaju' },
+                    '81': { estado: 'PE', regiao: 'Recife' },
+                    '82': { estado: 'AL', regiao: 'Maceió' },
+                    '83': { estado: 'PB', regiao: 'João Pessoa' },
+                    '84': { estado: 'RN', regiao: 'Natal' },
+                    '85': { estado: 'CE', regiao: 'Fortaleza' },
+                    '86': { estado: 'PI', regiao: 'Teresina' },
+                    '87': { estado: 'PE', regiao: 'Petrolina' },
+                    '88': { estado: 'CE', regiao: 'Juazeiro do Norte' },
+                    '89': { estado: 'PI', regiao: 'Picos' },
+                    '91': { estado: 'PA', regiao: 'Belém' },
+                    '92': { estado: 'AM', regiao: 'Manaus' },
+                    '93': { estado: 'PA', regiao: 'Santarém' },
+                    '94': { estado: 'PA', regiao: 'Marabá' },
+                    '95': { estado: 'RR', regiao: 'Boa Vista' },
+                    '96': { estado: 'AP', regiao: 'Macapá' },
+                    '97': { estado: 'AM', regiao: 'Tefé' },
+                    '98': { estado: 'MA', regiao: 'São Luís' },
+                    '99': { estado: 'MA', regiao: 'Imperatriz' },
+                  };
+
+                  // Processar clientes
+                  allClients.forEach((cliente: any) => {
+                    const login = cliente.Login || cliente.login || '';
+                    const cleaned = login.replace(/\D/g, '');
+                    
+                    // Verificar se começa com 55 e extrair DDD (3º e 4º dígito)
+                    if (cleaned.startsWith('55') && cleaned.length >= 4) {
+                      const ddd = cleaned.substring(2, 4);
+                      const info = dddInfo[ddd];
+                      
+                      if (info) {
+                        if (!dddMap[ddd]) {
+                          dddMap[ddd] = {
+                            count: 0,
+                            estado: info.estado,
+                            regiao: info.regiao
+                          };
+                        }
+                        dddMap[ddd].count++;
+                      }
+                    }
+                  });
+
+                  // Ordenar por quantidade
+                  const sortedDDDs = Object.entries(dddMap)
+                    .sort((a, b) => b[1].count - a[1].count);
+
+                  const totalClientes = sortedDDDs.reduce((sum, [_, data]) => sum + data.count, 0);
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Stats Resumo */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="p-4 bg-[#1A2035] border-[#1E2840]">
+                          <p className="text-[#6B7694] text-xs mb-1">Total de Clientes</p>
+                          <p className="text-[#EAF2FF] text-2xl">{totalClientes.toLocaleString('pt-BR')}</p>
+                        </Card>
+                        <Card className="p-4 bg-[#1A2035] border-[#1E2840]">
+                          <p className="text-[#6B7694] text-xs mb-1">DDDs Diferentes</p>
+                          <p className="text-[#00BFFF] text-2xl">{sortedDDDs.length}</p>
+                        </Card>
+                        <Card className="p-4 bg-[#1A2035] border-[#1E2840]">
+                          <p className="text-[#6B7694] text-xs mb-1">DDD Mais Comum</p>
+                          <p className="text-[#FF00CC] text-2xl">
+                            {sortedDDDs.length > 0 ? sortedDDDs[0][0] : '-'}
+                          </p>
+                          {sortedDDDs.length > 0 && (
+                            <p className="text-[#6B7694] text-xs mt-1">
+                              {sortedDDDs[0][1].regiao} ({sortedDDDs[0][1].count} clientes)
+                            </p>
+                          )}
+                        </Card>
+                      </div>
+
+                      {/* Tabela de DDDs */}
+                      <Card className="p-6 bg-[#1A2035] border-[#1E2840]">
+                        <h4 className="text-[#EAF2FF] mb-4">Ranking por DDD</h4>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-[#1E2840]">
+                                <TableHead className="text-[#9FAAC6]">#</TableHead>
+                                <TableHead className="text-[#9FAAC6]">DDD</TableHead>
+                                <TableHead className="text-[#9FAAC6]">Estado</TableHead>
+                                <TableHead className="text-[#9FAAC6]">Região</TableHead>
+                                <TableHead className="text-[#9FAAC6] text-right">Clientes</TableHead>
+                                <TableHead className="text-[#9FAAC6] text-right">Percentual</TableHead>
+                                <TableHead className="text-[#9FAAC6]">Distribuição</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sortedDDDs.map(([ddd, data], idx) => {
+                                const percentage = (data.count / totalClientes) * 100;
+                                return (
+                                  <TableRow key={ddd} className="border-[#1E2840] hover:bg-[#0B0F18]">
+                                    <TableCell className="text-[#6B7694]">{idx + 1}</TableCell>
+                                    <TableCell className="text-[#00BFFF] font-mono">{ddd}</TableCell>
+                                    <TableCell className="text-[#EAF2FF]">
+                                      <Badge variant="outline" style={{ borderColor: '#1E2840', color: '#9FAAC6' }}>
+                                        {data.estado}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-[#9FAAC6]">{data.regiao}</TableCell>
+                                    <TableCell className="text-[#EAF2FF] text-right">{data.count}</TableCell>
+                                    <TableCell className="text-[#FF00CC] text-right">{percentage.toFixed(1)}%</TableCell>
+                                    <TableCell>
+                                      <div className="w-full bg-[#0B0F18] rounded-full h-2 overflow-hidden">
+                                        <div 
+                                          className="h-full bg-gradient-to-r from-[#00BFFF] to-[#FF00CC] rounded-full transition-all"
+                                          style={{ width: `${percentage}%` }}
+                                        />
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {sortedDDDs.length === 0 && (
+                          <div className="text-center py-8">
+                            <p className="text-[#6B7694]">Nenhum cliente com DDD válido encontrado</p>
+                            <p className="text-[#6B7694] text-xs mt-2">
+                              Os logins devem começar com 55 (código do Brasil) + DDD
+                            </p>
+                          </div>
+                        )}
+                      </Card>
+                    </div>
+                  );
+                })()}
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

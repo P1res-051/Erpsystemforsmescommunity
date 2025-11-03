@@ -143,60 +143,148 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Resumo do dia (simulado baseado nos dados disponíveis)
-  const receitaHoje = Math.round(data.receitaMensal / 30);
-  const receitaOntem = Math.round(receitaHoje * 0.965);
-  const variacaoReceitaPct = (((receitaHoje - receitaOntem) / receitaOntem) * 100).toFixed(1);
-  
-  const clientesAtivosHoje = data.clientesAtivos || 0;
-  const clientesAtivosOntem = Math.round(clientesAtivosHoje * 0.988);
-  const variacaoClientesPct = (((clientesAtivosHoje - clientesAtivosOntem) / clientesAtivosOntem) * 100).toFixed(1);
-  
-  const renovacoesHoje = Math.round((data.clientesAtivos || 0) * 0.03);
-  const renovacoesOntem = Math.round(renovacoesHoje * 0.92);
-  const variacaoRenovacoesPct = (((renovacoesHoje - renovacoesOntem) / renovacoesOntem) * 100).toFixed(1);
-  
-  const perdasHoje = Math.round((data.clientesExpirados || 0) / 30);
-  const perdasOntem = Math.round(perdasHoje * 1.15);
-  const variacaoPerdasPct = (((perdasHoje - perdasOntem) / perdasOntem) * 100).toFixed(1);
+  // Resumo do dia - DADOS REAIS (será calculado após calendarData)
+  // Placeholder - será preenchido depois
+  let receitaHoje = 0;
+  let receitaOntem = 0;
+  let variacaoReceitaPct = '0.0';
+  let clientesAtivosHoje = data.clientesAtivos || 0;
+  let clientesAtivosOntem = clientesAtivosHoje;
+  let variacaoClientesPct = '0.0';
+  let renovacoesHoje = 0;
+  let renovacoesOntem = 0;
+  let variacaoRenovacoesPct = '0.0';
+  let perdasHoje = 0;
+  let perdasOntem = 0;
+  let variacaoPerdasPct = '0.0';
 
-  // Calendário financeiro - 90 passados + hoje + 29 futuros = 120 dias total
+  // Calendário financeiro - BASEADO EM DADOS REAIS DA API
   const today = new Date();
-  const calendarData: DayData[] = Array.from({ length: 120 }, (_, i) => {
-    const date = new Date();
-    const offset = i - 90; // 90 dias no passado
-    date.setDate(date.getDate() + offset);
+  today.setHours(0, 0, 0, 0);
+  
+  // Importar função de parse seguro
+  const parseApiDate = (str: string | null | undefined): Date | null => {
+    if (!str) return null;
     
-    const baseReceita = data.receitaMensal / 30;
-    const variation = (Math.sin((i - 90) / 3) * 0.2 + 1);
-    const isFuture = offset > 0;
-    const isToday = offset === 0;
-    const isPast = offset < 0;
+    // "2024-10-02 09:00:00" -> "2024-10-02T09:00:00"
+    const iso = str.replace(' ', 'T');
+    const d = new Date(iso);
     
-    const receitaMultiplier = isFuture ? 1.05 + (offset * 0.01) : 1;
-    const receita = Math.round(baseReceita * variation * receitaMultiplier);
-    const renovacoes = Math.round((data.clientesAtivos || 0) * 0.025 * variation * (isFuture ? 1.03 : 1));
-    const perdas = Math.round((data.clientesExpirados || 0) / 30 * variation * (isFuture ? 0.95 : 1));
-    const conversoesCount = Math.round(receita / (data.ticketMedio || 30));
-    const ticketMedio = conversoesCount > 0 ? receita / conversoesCount : data.ticketMedio || 30;
+    if (isNaN(d.getTime())) return null;
+    return d;
+  };
+  
+  // Agrupar conversões e renovações por data
+  const dadosPorData: Record<string, { conversoes: number; receitaConversoes: number; renovacoes: number; receitaRenovacoes: number }> = {};
+  
+  // Processar conversões reais
+  (data.rawData?.conversoes || []).forEach((conv: any) => {
+    const dataStr = conv.Data || conv.data;
+    if (!dataStr) return;
     
-    return {
-      date: date.toISOString().split('T')[0],
+    const dataObj = parseApiDate(dataStr);
+    if (!dataObj) return;
+    
+    dataObj.setHours(0, 0, 0, 0);
+    const dateKey = dataObj.toISOString().split('T')[0];
+    
+    if (!dadosPorData[dateKey]) {
+      dadosPorData[dateKey] = { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+    }
+    
+    dadosPorData[dateKey].conversoes++;
+    dadosPorData[dateKey].receitaConversoes += (conv.Custo || conv.custo || 0);
+  });
+  
+  // Processar renovações reais
+  (data.rawData?.renovacoes || []).forEach((ren: any) => {
+    const dataStr = ren.Data || ren.data;
+    if (!dataStr) return;
+    
+    const dataObj = parseApiDate(dataStr);
+    if (!dataObj) return;
+    
+    dataObj.setHours(0, 0, 0, 0);
+    const dateKey = dataObj.toISOString().split('T')[0];
+    
+    if (!dadosPorData[dateKey]) {
+      dadosPorData[dateKey] = { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+    }
+    
+    dadosPorData[dateKey].renovacoes++;
+    dadosPorData[dateKey].receitaRenovacoes += (ren.Custo || ren.custo || 0);
+  });
+  
+  // Processar perdas (expirados) por data
+  const perdasPorData: Record<string, number> = {};
+  (data.rawData?.expirados || []).forEach((exp: any) => {
+    const dataStr = exp.Expira_Em || exp.expira_em || exp.Data_Expiracao || exp.data_expiracao;
+    if (!dataStr) return;
+    
+    const dataObj = parseApiDate(dataStr);
+    if (!dataObj) return;
+    
+    dataObj.setHours(0, 0, 0, 0);
+    const dateKey = dataObj.toISOString().split('T')[0];
+    
+    perdasPorData[dateKey] = (perdasPorData[dateKey] || 0) + 1;
+  });
+  
+  // Gerar calendário com DADOS REAIS (últimos 90 dias)
+  const calendarData: DayData[] = [];
+  
+  for (let i = 90; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateKey = date.toISOString().split('T')[0];
+    
+    const dadosDia = dadosPorData[dateKey] || { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+    const perdasDia = perdasPorData[dateKey] || 0;
+    
+    const receitaDia = dadosDia.receitaConversoes + dadosDia.receitaRenovacoes;
+    const perdasValor = perdasDia * (data.ticketMedio || 30);
+    const liquidoDia = receitaDia - perdasValor;
+    
+    calendarData.push({
+      date: dateKey,
       day: date.getDate(),
       month: date.toLocaleDateString('pt-BR', { month: 'long' }),
       weekday: date.toLocaleDateString('pt-BR', { weekday: 'short' }),
-      receita,
-      renovacoes,
-      perdas,
-      lucro: receita - perdas,
-      clientesAtivos: Math.round((data.clientesAtivos || 0) * (0.95 + Math.random() * 0.1)),
-      conversoesCount,
-      ticketMedio,
-      isToday,
-      isFuture,
-      isPast,
-    };
-  });
+      receita: receitaDia,
+      renovacoes: dadosDia.renovacoes,
+      perdas: perdasDia,
+      lucro: liquidoDia,
+      clientesAtivos: data.clientesAtivos || 0,
+      conversoesCount: dadosDia.conversoes,
+      ticketMedio: receitaDia > 0 ? receitaDia / (dadosDia.conversoes + dadosDia.renovacoes) : (data.ticketMedio || 30),
+      isToday: i === 0,
+      isFuture: false,
+      isPast: i > 0,
+    });
+  }
+
+  // Calcular resumo do dia com dados REAIS
+  const diaHoje = calendarData.find(d => d.isToday);
+  const diaOntem = calendarData.length >= 2 ? calendarData[calendarData.length - 2] : null;
+  
+  if (diaHoje) {
+    receitaHoje = diaHoje.receita;
+    renovacoesHoje = diaHoje.renovacoes;
+    perdasHoje = diaHoje.perdas;
+    
+    if (diaOntem) {
+      receitaOntem = diaOntem.receita;
+      renovacoesOntem = diaOntem.renovacoes;
+      perdasOntem = diaOntem.perdas;
+      
+      variacaoReceitaPct = receitaOntem > 0 ? (((receitaHoje - receitaOntem) / receitaOntem) * 100).toFixed(1) : '0.0';
+      variacaoRenovacoesPct = renovacoesOntem > 0 ? (((renovacoesHoje - renovacoesOntem) / renovacoesOntem) * 100).toFixed(1) : '0.0';
+      variacaoPerdasPct = perdasOntem > 0 ? (((perdasHoje - perdasOntem) / perdasOntem) * 100).toFixed(1) : '0.0';
+      
+      clientesAtivosOntem = data.clientesAtivos - (diaHoje.conversoesCount + diaHoje.renovacoes - diaHoje.perdas);
+      variacaoClientesPct = clientesAtivosOntem > 0 ? (((clientesAtivosHoje - clientesAtivosOntem) / clientesAtivosOntem) * 100).toFixed(1) : '0.0';
+    }
+  }
 
   // Selecionar dia atual por padrão
   useEffect(() => {
@@ -365,38 +453,28 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     setSelectedDay(day);
   };
 
-  // Dados históricos para gráficos de ganhos com cálculos CORRETOS e DATAS REAIS
+  // Dados históricos para gráficos de ganhos - BASEADO EM DADOS REAIS
   const historicoGanhos = (() => {
     const days = parseInt(periodoFiltro) || 30;
-    const baseReceita = data.receitaMensal / 30;
     const ticketMedio = data.ticketMedio || 30;
     let acumuladoAtual = 0;
     
-    // Data de hoje
-    const hoje = new Date();
+    // Usar os dados reais do calendário (já calculados com dados da API)
+    const diasFiltrados = calendarData.slice(-days);
     
-    return Array.from({ length: days }, (_, i) => {
-      const variation = (Math.sin(i / 3) * 0.2 + 1);
-      
-      // Calcular a data real (hoje - days + i)
-      const dataAtual = new Date(hoje);
-      dataAtual.setDate(hoje.getDate() - days + i + 1);
-      
-      // Formatação da data
-      const dia = dataAtual.getDate();
-      const mes = dataAtual.getMonth() + 1;
+    return diasFiltrados.map((dayData) => {
+      const dataObj = new Date(dayData.date);
+      const dia = dataObj.getDate();
+      const mes = dataObj.getMonth() + 1;
       const diaFormatado = `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}`;
-      const dataCompleta = dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      const dataCompleta = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
       
-      // Cálculo correto separando novos e renovações
-      const totalDia = baseReceita * variation;
-      const renovacaoDia = Math.round(totalDia * 0.65); // 65% são renovações
-      const novoDia = Math.round(totalDia * 0.35); // 35% são novos clientes
-      const perdaDia = (data.clientesExpirados || 0) / 30 * ticketMedio * variation * 0.15; // 15% de perda
-      
-      // Receita real do dia (novos + renovações)
-      const receitaDia = novoDia + renovacaoDia;
-      const lucroDia = receitaDia - perdaDia;
+      // Valores REAIS do dia
+      const receitaConversoes = dayData.conversoesCount * ticketMedio;
+      const receitaRenovacoes = dayData.renovacoes * ticketMedio;
+      const receitaDia = dayData.receita || (receitaConversoes + receitaRenovacoes);
+      const perdaDia = dayData.perdas * ticketMedio;
+      const lucroDia = dayData.lucro || (receitaDia - perdaDia);
       
       // Acumulado correto
       acumuladoAtual += lucroDia;
@@ -405,15 +483,15 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
         dia: dia,
         diaFormatado: diaFormatado,
         dataCompleta: dataCompleta,
-        dataObj: dataAtual,
+        dataObj: dataObj,
         receita: receitaDia,
-        renovacao: renovacaoDia,
-        novo: novoDia,
+        renovacao: receitaRenovacoes,
+        novo: receitaConversoes,
         perda: perdaDia,
         lucro: lucroDia,
-        novosClientes: Math.round(novoDia / ticketMedio),
-        renovacoes: renovacaoDia,
-        ganhos: novoDia,
+        novosClientes: dayData.conversoesCount,
+        renovacoes: receitaRenovacoes,
+        ganhos: receitaConversoes,
         perdas: perdaDia,
         acumulado: acumuladoAtual,
       };
@@ -2359,10 +2437,10 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
                 <div>
                   <h2 className="text-white mb-2 flex items-center gap-2">
                     <span>💎</span>
-                    <span>Distribuição de Receita por Planos</span>
+                    <span>Receita por Tipo de Plano</span>
                   </h2>
                   <p className="text-slate-500 text-sm mb-4">
-                    Entenda quais tipos de assinatura geram maior faturamento e margens mais saudáveis
+                    💡 Descubra quais planos geram mais receita e otimize sua estratégia de vendas
                   </p>
                   <Card 
                     className="p-6 border-[rgba(255,255,255,0.05)] hover:shadow-lg transition-all duration-200"
@@ -2653,17 +2731,10 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
             {/* Seção: Relatórios e Exportações */}
             {activeSection === 'relatorios' && (
               <div className="space-y-6">
-                <div>
-                  <h2 className="text-white flex items-center gap-2">
-                    <Download className="w-5 h-5" style={{ color: COLORS.ativos }} />
-                    <span>Relatórios e Exportações</span>
-                  </h2>
-                  <p className="text-slate-500 text-sm mt-1">
-                    Exportação de dados consolidados
-                  </p>
-                </div>
+                {/* Card Funcional de Exportação */}
+                <ExportReportsCard data={data} />
 
-                {/* Tipos de Exportação */}
+                {/* Configurações Adicionais (antigo layout mantido abaixo) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
                     {
