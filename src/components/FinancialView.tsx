@@ -180,9 +180,128 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     
     return null;
   };
+
+  // Verificar se duas datas são no mesmo dia
+  const isSameDay = (d1: Date | null, d2: Date | null): boolean => {
+    if (!d1 || !d2) return false;
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  };
+
+  // Limpar usuário de tags HTML
+  const limparUsuario = (u: string): string => {
+    return u.replace(/<[^>]+>/g, '').trim();
+  };
+
+  // ===================================
+  // CALCULAR MÉTRICAS DO DIA ATUAL
+  // ===================================
+  const hojeMenos = (n: number): Date => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const hoje = hojeMenos(0);
+  const ontem = hojeMenos(1);
+
+  // 1. Conversões do dia
+  const convHoje = (data.rawData?.conversoes || []).filter((c: any) => 
+    isSameDay(parseApiDate(c.Data || c.data), hoje)
+  ).length;
+
+  const convOntem = (data.rawData?.conversoes || []).filter((c: any) => 
+    isSameDay(parseApiDate(c.Data || c.data), ontem)
+  ).length;
+
+  // 2. Renovações do dia
+  const renHoje = (data.rawData?.renovacoes || []).filter((r: any) => 
+    isSameDay(parseApiDate(r.Data || r.data), hoje)
+  ).length;
+
+  const renOntem = (data.rawData?.renovacoes || []).filter((r: any) => 
+    isSameDay(parseApiDate(r.Data || r.data), ontem)
+  ).length;
+
+  // 3. Expirados hoje
+  const expHoje = (data.rawData?.expirados || []).filter((e: any) => 
+    isSameDay(parseApiDate(e.Expira_Em || e.expira_em), hoje)
+  ).length;
+
+  const expOntem = (data.rawData?.expirados || []).filter((e: any) => 
+    isSameDay(parseApiDate(e.Expira_Em || e.expira_em), ontem)
+  ).length;
+
+  // 4. Novos clientes hoje
+  const novosHoje = (data.rawData?.ativos || []).filter((a: any) => 
+    isSameDay(parseApiDate(a.Criado_Em || a.criado_em), hoje)
+  ).length;
+
+  const novosOntem = (data.rawData?.ativos || []).filter((a: any) => 
+    isSameDay(parseApiDate(a.Criado_Em || a.criado_em), ontem)
+  ).length;
+
+  // 5. Base ativa atual
+  const baseAtiva = (data.rawData?.ativos || []).length;
+
+  // 6. Taxa de renovação do dia
+  const taxaRenovacaoHoje = expHoje === 0 ? 0 : (renHoje / expHoje) * 100;
+
+  // 7. Churn diário
+  const baseOntem = baseAtiva + expHoje - novosHoje;
+  const churnHoje = baseOntem <= 0 ? 0 : (expHoje / baseOntem) * 100;
+  const taxaRetencaoHoje = 100 - churnHoje;
+
+  // 8. Série temporal (últimos 7 dias)
+  const serie7Dias = Array.from({ length: 7 }, (_, i) => {
+    const d = hojeMenos(6 - i);
+    const convDia = (data.rawData?.conversoes || []).filter((c: any) => 
+      isSameDay(parseApiDate(c.Data || c.data), d)
+    ).length;
+    const renDia = (data.rawData?.renovacoes || []).filter((r: any) => 
+      isSameDay(parseApiDate(r.Data || r.data), d)
+    ).length;
+    const expDia = (data.rawData?.expirados || []).filter((e: any) => 
+      isSameDay(parseApiDate(e.Expira_Em || e.expira_em), d)
+    ).length;
+    const novosDia = (data.rawData?.ativos || []).filter((a: any) => 
+      isSameDay(parseApiDate(a.Criado_Em || a.criado_em), d)
+    ).length;
+
+    return {
+      dia: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      conversoes: convDia,
+      renovacoes: renDia,
+      expirados: expDia,
+      novos: novosDia,
+      value: convDia // Para sparkline
+    };
+  });
+
+  console.log('📊 Métricas do dia calculadas:', {
+    convHoje,
+    renHoje,
+    expHoje,
+    novosHoje,
+    baseAtiva,
+    taxaRenovacaoHoje: `${taxaRenovacaoHoje.toFixed(1)}%`,
+    taxaRetencaoHoje: `${taxaRetencaoHoje.toFixed(1)}%`,
+    serie7Dias
+  });
   
   // Agrupar conversões e renovações por data
-  const dadosPorData: Record<string, { conversoes: number; receitaConversoes: number; renovacoes: number; receitaRenovacoes: number }> = {};
+  const dadosPorData: Record<string, { 
+    conversoes: number; 
+    creditosConversoes: number; 
+    receitaConversoes: number;
+    renovacoes: number; 
+    creditosRenovacoes: number;
+    receitaRenovacoes: number;
+  }> = {};
   
   // Processar conversões reais
   (data.rawData?.conversoes || []).forEach((conv: any) => {
@@ -196,11 +315,16 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     const dateKey = dataObj.toISOString().split('T')[0];
     
     if (!dadosPorData[dateKey]) {
-      dadosPorData[dateKey] = { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+      dadosPorData[dateKey] = { 
+        conversoes: 0, creditosConversoes: 0, receitaConversoes: 0,
+        renovacoes: 0, creditosRenovacoes: 0, receitaRenovacoes: 0 
+      };
     }
     
+    const creditos = conv.Custo || conv.custo || 0;
     dadosPorData[dateKey].conversoes++;
-    dadosPorData[dateKey].receitaConversoes += (conv.Custo || conv.custo || 0);
+    dadosPorData[dateKey].creditosConversoes += creditos;
+    dadosPorData[dateKey].receitaConversoes += (creditos * 30); // Créditos × R$ 30
   });
   
   // Processar renovações reais
@@ -215,11 +339,16 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     const dateKey = dataObj.toISOString().split('T')[0];
     
     if (!dadosPorData[dateKey]) {
-      dadosPorData[dateKey] = { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+      dadosPorData[dateKey] = { 
+        conversoes: 0, creditosConversoes: 0, receitaConversoes: 0,
+        renovacoes: 0, creditosRenovacoes: 0, receitaRenovacoes: 0 
+      };
     }
     
+    const creditos = ren.Custo || ren.custo || 0;
     dadosPorData[dateKey].renovacoes++;
-    dadosPorData[dateKey].receitaRenovacoes += (ren.Custo || ren.custo || 0);
+    dadosPorData[dateKey].creditosRenovacoes += creditos;
+    dadosPorData[dateKey].receitaRenovacoes += (creditos * 30); // Créditos × R$ 30
   });
   
   // Processar perdas (expirados) por data
@@ -245,12 +374,21 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
     date.setDate(date.getDate() - i);
     const dateKey = date.toISOString().split('T')[0];
     
-    const dadosDia = dadosPorData[dateKey] || { conversoes: 0, receitaConversoes: 0, renovacoes: 0, receitaRenovacoes: 0 };
+    const dadosDia = dadosPorData[dateKey] || { 
+      conversoes: 0, creditosConversoes: 0, receitaConversoes: 0,
+      renovacoes: 0, creditosRenovacoes: 0, receitaRenovacoes: 0 
+    };
     const perdasDia = perdasPorData[dateKey] || 0;
     
+    // Receita = Créditos × R$ 30
     const receitaDia = dadosDia.receitaConversoes + dadosDia.receitaRenovacoes;
-    const perdasValor = perdasDia * (data.ticketMedio || 30);
-    const liquidoDia = receitaDia - perdasValor;
+    
+    // Custo = Total de Créditos × R$ 6,50
+    const creditosTotaisDia = dadosDia.creditosConversoes + dadosDia.creditosRenovacoes;
+    const custoDosCreditosDia = creditosTotaisDia * 6.5;
+    
+    // Lucro = Receita - Custo dos Créditos
+    const liquidoDia = receitaDia - custoDosCreditosDia;
     
     calendarData.push({
       date: dateKey,
@@ -267,6 +405,17 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
       isToday: i === 0,
       isFuture: false,
       isPast: i > 0,
+    });
+  }
+
+  // Debug: Verificar cálculos de lucro
+  const diasComLucro = calendarData.filter(d => d.lucro !== 0);
+  if (diasComLucro.length > 0) {
+    console.log('💰 Exemplo de cálculos (último dia com movimento):', {
+      data: diasComLucro[diasComLucro.length - 1].date,
+      receita: diasComLucro[diasComLucro.length - 1].receita,
+      lucro: diasComLucro[diasComLucro.length - 1].lucro,
+      lucroTotalGlobal: data.lucroTotal
     });
   }
 
@@ -818,64 +967,65 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
 
         {/* Seção KPIs Principais - Layout Moderno */}
         <div className="space-y-6 mt-6">
-          {/* Linha de KPIs Compactos */}
+          {/* Linha de KPIs Compactos - DADOS REAIS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <CompactKPICard
               label="Receita Total"
-              value={formatBRL(data.receitaMensal)}
-              change="+12.4% vs mês anterior"
+              value={formatBRL(data.receitaTotal || 0)}
+              change={`${convHoje} conversões hoje`}
               changeType="positive"
               icon={DollarSign}
               gradient="linear-gradient(135deg, #00ffa6 0%, #00bfff 100%)"
             />
             <CompactKPICard
               label="Base Ativa"
-              value={data.clientesAtivos.toLocaleString('pt-BR')}
-              change="+18 novos hoje"
-              changeType="positive"
+              value={baseAtiva.toLocaleString('pt-BR')}
+              change={`+${novosHoje} novos hoje`}
+              changeType={novosHoje > 0 ? "positive" : "neutral"}
               icon={Users}
               gradient="linear-gradient(135deg, #a48bff 0%, #7b5cff 100%)"
             />
             <CompactKPICard
               label="Taxa de Retenção"
-              value={`${(((data.clientesAtivos || 0) / ((data.clientesAtivos || 0) + (data.clientesExpirados || 0))) * 100).toFixed(1)}%`}
-              change="+2.1% essa semana"
-              changeType="positive"
+              value={`${taxaRetencaoHoje.toFixed(1)}%`}
+              change={`-${expHoje} perdas hoje`}
+              changeType={expHoje > 5 ? "negative" : "positive"}
               icon={RefreshCw}
               gradient="linear-gradient(135deg, #ff00cc 0%, #ff4a9a 100%)"
             />
             <CompactKPICard
               label="Lucro Líquido"
-              value={formatBRL(data.receitaMensal - (data.clientesExpirados * (data.ticketMedio || 30)))}
-              change="-8 perdas hoje"
-              changeType="negative"
+              value={formatBRL(data.lucroTotal || 0)}
+              change={data.lucroTotal && data.lucroTotal > 0 ? "+lucro positivo" : "verificar custos"}
+              changeType={data.lucroTotal && data.lucroTotal > 0 ? "positive" : "negative"}
               icon={TrendingUp}
               gradient="linear-gradient(135deg, #ffd700 0%, #ffb700 100%)"
             />
           </div>
 
           {/* Cards Analíticos - Estilo Performance Analytics */}
+          {/* Cards Analíticos - DADOS REAIS DOS ÚLTIMOS 7 DIAS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <PerformanceAnalyticsCard
-              title="Performance de Receita"
+              title="Conversões (7 dias)"
               icon={TrendingUp}
               gradient="linear-gradient(to right, #00ffa6, #00bfff)"
               isLive
               metrics={[
                 {
                   label: 'Hoje',
-                  value: formatBRL(receitaHoje),
-                  change: '+12.3%',
-                  changeColor: '#22e3af',
+                  value: convHoje.toString(),
+                  change: convOntem > 0 ? `${convHoje > convOntem ? '+' : ''}${convHoje - convOntem} vs ontem` : `${convHoje} vendas`,
+                  changeColor: convHoje >= convOntem ? '#22e3af' : '#ff4a9a',
                 },
                 {
-                  label: 'Renovações',
-                  value: renovacoesHoje.toString(),
-                  change: '+8.1%',
+                  label: 'Semana',
+                  value: serie7Dias.reduce((sum, d) => sum + d.conversoes, 0).toString(),
+                  change: `${(serie7Dias.reduce((sum, d) => sum + d.conversoes, 0) / 7).toFixed(1)} média/dia`,
                   changeColor: '#22e3af',
                 },
               ]}
-              chartData={historicoGanhos.slice(-7).map(d => ({ value: d.receita }))}
+              chartData={serie7Dias.map(d => ({ value: d.conversoes }))}
               action={{
                 label: 'Ver Detalhes',
                 onClick: () => setActiveSection('detalhamento'),
@@ -883,25 +1033,25 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
             />
 
             <PerformanceAnalyticsCard
-              title="Análise de Clientes"
-              icon={Users}
+              title="Renovações (7 dias)"
+              icon={RefreshCw}
               gradient="linear-gradient(to right, #a48bff, #7b5cff)"
               isLive
               metrics={[
                 {
-                  label: 'Ativos',
-                  value: data.clientesAtivos.toLocaleString('pt-BR'),
-                  change: '+24 hoje',
-                  changeColor: '#22e3af',
+                  label: 'Hoje',
+                  value: renHoje.toString(),
+                  change: renOntem > 0 ? `${renHoje > renOntem ? '+' : ''}${renHoje - renOntem} vs ontem` : `${renHoje} renovações`,
+                  changeColor: renHoje >= renOntem ? '#22e3af' : '#ff4a9a',
                 },
                 {
-                  label: 'Churn Rate',
-                  value: `${churnRate.toFixed(1)}%`,
-                  change: '-1.2%',
-                  changeColor: '#22e3af',
+                  label: 'Taxa',
+                  value: `${taxaRenovacaoHoje.toFixed(1)}%`,
+                  change: `${expHoje} expiraram`,
+                  changeColor: taxaRenovacaoHoje > 50 ? '#22e3af' : '#ff4a9a',
                 },
               ]}
-              chartData={historicoGanhos.slice(-7).map(d => ({ value: d.novosClientes }))}
+              chartData={serie7Dias.map(d => ({ value: d.renovacoes }))}
               action={{
                 label: 'Ver Relatório',
                 onClick: () => {},
@@ -909,24 +1059,24 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
             />
 
             <PerformanceAnalyticsCard
-              title="Retenção & Crescimento"
+              title="Entrada vs Saída (7 dias)"
               icon={Activity}
               gradient="linear-gradient(to right, #ff00cc, #ff4a9a)"
               metrics={[
                 {
-                  label: 'LTV Médio',
-                  value: `R$ ${ltv.toFixed(0)}`,
-                  change: '+5.2%',
+                  label: 'Novos',
+                  value: novosHoje.toString(),
+                  change: `${serie7Dias.reduce((sum, d) => sum + d.novos, 0)} na semana`,
                   changeColor: '#22e3af',
                 },
                 {
-                  label: 'ROI',
-                  value: `${roi.toFixed(1)}x`,
-                  change: '+0.8x',
-                  changeColor: '#22e3af',
+                  label: 'Perdas',
+                  value: expHoje.toString(),
+                  change: `${serie7Dias.reduce((sum, d) => sum + d.expirados, 0)} na semana`,
+                  changeColor: '#ff4a9a',
                 },
               ]}
-              chartData={ltvHistorico.map(d => ({ value: d.ltv }))}
+              chartData={serie7Dias.map(d => ({ value: d.novos - d.expirados }))}
               action={{
                 label: 'Analisar',
                 onClick: () => setActiveSection('desempenho-comercial'),

@@ -48,8 +48,12 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
     setIsLoading(true);
 
     try {
+      console.log('🔐 Tentando fazer login...');
+      console.log('📧 Username:', nomeRevenda);
+
       // ⚡ LOGIN ADMIN - Bypass para desenvolvimento
       if (nomeRevenda.toLowerCase() === 'admin' && senhaRevenda === 'admin123') {
+        console.log('✅ Login admin detectado');
         setTimeout(() => {
           handleAdminLogin();
           setIsLoading(false);
@@ -57,30 +61,91 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
         return;
       }
 
-      // API REAL - Endpoint de login do painel
-      const response = await fetch('https://automatixbest-api.automation.app.br/api/painel/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: nomeRevenda,
-          password: senhaRevenda,
-        }),
-      });
+      console.log('🌐 Chamando API de login real...');
 
-      if (!response.ok) {
-        throw new Error('Credenciais inválidas. Verifique seu nome de revenda e senha.');
+      // Criar controller para timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      // API REAL - Endpoint de login do painel
+      let response: Response;
+      try {
+        response = await fetch('https://automatixbest-api.automation.app.br/api/painel/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: nomeRevenda,
+            password: senhaRevenda,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('⏱️ Timeout: O servidor demorou muito para responder. Tente novamente.');
+        }
+        
+        throw new Error('❌ Não foi possível conectar ao servidor. Verifique sua conexão de internet.');
       }
 
-      const data = await response.json();
+      console.log('📡 Status da resposta:', response.status, response.statusText);
+
+      // Tentar ler a resposta como JSON
+      let data: any;
+      try {
+        const textResponse = await response.text();
+        console.log('📄 Resposta bruta:', textResponse.substring(0, 200));
+        
+        try {
+          data = JSON.parse(textResponse);
+          console.log('✅ JSON parseado:', data);
+        } catch (jsonError) {
+          console.error('❌ Erro ao parsear JSON:', jsonError);
+          throw new Error('Resposta inválida do servidor. Verifique se o backend está online.');
+        }
+      } catch (readError) {
+        console.error('❌ Erro ao ler resposta:', readError);
+        throw new Error('Não foi possível conectar ao servidor');
+      }
+
+      // Verificar se houve erro na API
+      if (!response.ok) {
+        const errorMsg = data?.error || data?.message || 'Credenciais inválidas. Verifique seu nome de revenda e senha.';
+        console.error('❌ API retornou erro:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // Verificar se o login foi bem-sucedido
+      if (data.success === false || data.error) {
+        const errorMsg = data.error || data.message || 'Falha na autenticação';
+        console.error('❌ Login falhou:', errorMsg);
+        throw new Error(errorMsg);
+      }
       
       // Extrair dados da API real
       const { phpsessid, cache_key, resellerid } = data;
       
-      if (!cache_key || !phpsessid) {
-        throw new Error('Dados de autenticação incompletos');
+      console.log('📦 Dados recebidos:', {
+        phpsessid: phpsessid ? '***' : 'AUSENTE',
+        cache_key: cache_key ? cache_key.substring(0, 20) + '...' : 'AUSENTE',
+        resellerid: resellerid || 'AUSENTE'
+      });
+      
+      if (!cache_key) {
+        console.error('❌ Cache key ausente');
+        throw new Error('Cache key não retornado pela API. Verifique o backend.');
       }
+
+      if (!phpsessid) {
+        console.error('❌ PHPSESSID ausente');
+        throw new Error('PHPSESSID não retornado pela API. Verifique o backend.');
+      }
+
+      console.log('✅ Login bem-sucedido!');
 
       // Salvar credenciais se "Lembrar-me" estiver marcado
       if (rememberMe) {
@@ -107,7 +172,27 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
       onLoginSuccess(cache_key, userData);
 
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login. Tente novamente.');
+      let errorMessage = 'Erro ao fazer login. Tente novamente.';
+      
+      // Detectar tipos específicos de erro
+      if (err.name === 'AbortError') {
+        errorMessage = '⏱️ Timeout: O servidor demorou muito para responder. Tente novamente.';
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        errorMessage = '🚫 ERRO DE CORS: O backend não permite requisições deste domínio.\n\n' +
+          '💡 SOLUÇÕES:\n' +
+          '1. Use login ADMIN (username: admin / senha: admin123)\n' +
+          '2. Configure CORS no backend para permitir: ' + window.location.origin + '\n' +
+          '3. Use proxy local (veja PROXY_SETUP.md)';
+        console.error('❌ CORS ERROR - Backend bloqueou requisição cross-origin');
+        console.error('Origin do frontend:', window.location.origin);
+        console.error('Backend URL:', 'https://automatixbest-api.automation.app.br');
+      } else if (err.message?.includes('Resposta inválida')) {
+        errorMessage = '❌ Servidor retornou resposta inválida. Entre em contato com o suporte.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
@@ -339,18 +424,59 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
         }
 
         .error-message {
-          display: flex;
-          align-items: center;
-          gap: 10px;
           background: rgba(239, 68, 68, 0.1);
           border: 1px solid rgba(239, 68, 68, 0.3);
           border-radius: 10px;
-          padding: 12px 16px;
+          padding: 16px;
           margin-bottom: 24px;
           color: #ff4a9a;
           font-size: 13px;
           font-weight: 500;
           animation: shake 0.5s;
+        }
+
+        .error-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .error-solutions {
+          margin-top: 12px;
+          padding: 12px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+          border-left: 3px solid #00bfff;
+        }
+
+        .error-solutions h4 {
+          color: #00bfff;
+          font-size: 12px;
+          font-weight: 700;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .error-solutions ol {
+          margin: 0;
+          padding-left: 20px;
+          color: #cbd5e1;
+        }
+
+        .error-solutions li {
+          margin-bottom: 6px;
+          line-height: 1.5;
+        }
+
+        .cors-warning {
+          background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);
+          border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .cors-warning .error-header {
+          color: #ffc107;
         }
 
         @keyframes shake {
@@ -446,9 +572,41 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
 
         <form onSubmit={handleSubmit}>
           {error && (
-            <div className="error-message">
-              <AlertCircle size={18} />
-              <span>{error}</span>
+            <div className={error.includes('CORS') ? 'error-message cors-warning' : 'error-message'}>
+              <div className="error-header">
+                <AlertCircle size={18} />
+                <span style={{ fontWeight: 700 }}>
+                  {error.includes('CORS') ? '🚫 ERRO DE CORS DETECTADO' : 'Erro ao fazer login'}
+                </span>
+              </div>
+              
+              {error.includes('CORS') ? (
+                <>
+                  <p style={{ marginBottom: 12, lineHeight: 1.5 }}>
+                    O backend não permite requisições vindas deste domínio.
+                  </p>
+                  <div className="error-solutions">
+                    <h4>💡 Soluções Rápidas:</h4>
+                    <ol>
+                      <li>
+                        <strong>Login Admin (Recomendado):</strong><br />
+                        Username: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>admin</code><br />
+                        Senha: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>admin123</code>
+                      </li>
+                      <li>
+                        <strong>Configure CORS no Backend:</strong><br />
+                        Adicione este origin: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{window.location.origin}</code>
+                      </li>
+                      <li>
+                        <strong>Use Proxy Local:</strong><br />
+                        Execute: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>python botconversa_proxy.py</code>
+                      </li>
+                    </ol>
+                  </div>
+                </>
+              ) : (
+                <span>{error}</span>
+              )}
             </div>
           )}
 
@@ -531,6 +689,26 @@ export const LoginView = ({ onLoginSuccess }: LoginViewProps) => {
             Esqueceu sua senha?
           </a>
         </div>
+
+        {/* Banner de Ajuda CORS */}
+        {error && error.includes('CORS') && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(0, 191, 255, 0.05) 0%, rgba(255, 0, 204, 0.05) 100%)',
+            border: '1px solid rgba(0, 191, 255, 0.2)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginTop: '16px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '13px', color: '#00bfff', fontWeight: 700, marginBottom: '8px' }}>
+              💡 SOLUÇÃO RÁPIDA
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
+              Use o botão <strong style={{ color: '#ffd700' }}>ACESSO ADMIN</strong> abaixo<br />
+              para testar o dashboard sem conexão com backend
+            </div>
+          </div>
+        )}
 
         {/* Acesso Admin - Desenvolvimento */}
         <div className="admin-access">

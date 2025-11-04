@@ -51,7 +51,7 @@ export interface DashboardData {
   ticketMedio: number;
   receitaMensal: number;
   receitaAnual: number;
-  receitaTotal: number; // Soma real de todas as vendas
+  receitaTotal: number; // Receita em REAIS (soma dos preços dos planos)
   ltv: number;
   custoTotalConversoes: number;
   custoTotalRenovacoes: number;
@@ -60,6 +60,13 @@ export interface DashboardData {
   cac: number;
   roas: number;
   saldoMedioPosVenda: number;
+  
+  // Créditos e Lucro
+  totalCreditosGastos?: number; // Total de créditos consumidos
+  custoTotalCreditos?: number; // Custo em R$ dos créditos (créditos * custo_por_credito)
+  lucroTotal?: number; // Lucro = Receita - Custo dos Créditos
+  receitaTotalConversoes?: number; // Receita em R$ apenas conversões
+  receitaTotalRenovacoes?: number; // Receita em R$ apenas renovações
   
   // Análise por Plano
   conversoesPorPlano: Array<{ plano: string; count: number; receita: number }>;
@@ -129,6 +136,24 @@ export interface DashboardData {
     expirados: any[];
     jogos: any[];
     convJogos: any[];
+  };
+  
+  // Dados do dia
+  dadosDoDia?: {
+    conversoes: number;
+    renovacoes: number;
+    expirados: number;
+    ativados: number;
+    creditosGastos: number;
+    receita: number;
+    lucro: number;
+  };
+  
+  // Dados do mês
+  dadosDoMes?: {
+    conversoes: number;
+    renovacoes: number;
+    receita: number;
   };
 }
 
@@ -903,28 +928,8 @@ export default function App() {
       data.ticketMedio = data.receitaTotal / totalVendas;
     }
     
-    // MRR e ARR (calculado a partir das vendas reais normalizadas para mensal)
-    let mrrCalculado = 0;
-    
-    // Processar conversões
-    data.conversoesPorPlano.forEach(plano => {
-      const valorMensal = plano.plano === 'Anual' ? plano.receita / 12 
-        : plano.plano === 'Semestral' ? plano.receita / 6
-        : plano.plano === 'Trimestral' ? plano.receita / 3
-        : plano.receita; // Mensal ou 2 Telas
-      mrrCalculado += valorMensal;
-    });
-    
-    // Processar renovações
-    data.renovacoesPorPlano.forEach(plano => {
-      const valorMensal = plano.plano === 'Anual' ? plano.receita / 12 
-        : plano.plano === 'Semestral' ? plano.receita / 6
-        : plano.plano === 'Trimestral' ? plano.receita / 3
-        : plano.receita; // Mensal ou 2 Telas
-      mrrCalculado += valorMensal;
-    });
-    
-    data.receitaMensal = mrrCalculado || (data.clientesAtivos * data.ticketMedio); // Fallback
+    // Faturamento Mensal = Assinaturas Ativas × R$ 30
+    data.receitaMensal = data.clientesAtivos * 30;
     data.receitaAnual = data.receitaMensal * 12;
     
     // LTV (baseado em média real de renovações)

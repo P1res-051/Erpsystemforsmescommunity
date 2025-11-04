@@ -61,27 +61,57 @@ export function useAutoRefresh(
 
     try {
       console.log('🔄 Atualizando dados do painel...', new Date().toLocaleTimeString());
+      console.log('🔑 Cache Key:', authData.cache_key);
 
       // Buscar dados do painel usando cache_key
-      const response = await fetch(
-        `https://automatixbest-api.automation.app.br/api/painel/cache-all?cache_key=${authData.cache_key}`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://automatixbest-api.automation.app.br/api/painel/cache-all?cache_key=${authData.cache_key}`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      } catch (fetchError: any) {
+        // Detectar erro de CORS
+        if (fetchError.message?.includes('Failed to fetch') || 
+            fetchError.message?.includes('NetworkError') ||
+            fetchError.name === 'TypeError') {
+          console.error('❌ ERRO DE CORS detectado ao buscar dados');
+          console.error('🌐 Origin:', window.location.origin);
+          console.error('🔗 URL da API:', 'https://automatixbest-api.automation.app.br/api/painel/cache-all');
+          throw new Error('CORS: O backend não permite requisições deste domínio. Configure CORS no servidor ou use proxy local.');
         }
-      );
+        throw fetchError;
+      }
+
+      console.log('📡 Status da resposta:', response.status, response.statusText);
 
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error('Sessão expirada. Faça login novamente.');
         }
-        throw new Error(`Erro HTTP: ${response.status}`);
+        if (response.status === 403) {
+          throw new Error('Acesso negado. Verifique suas credenciais.');
+        }
+        if (response.status === 404) {
+          throw new Error('Endpoint não encontrado. Verifique a URL da API.');
+        }
+        throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📦 Dados recebidos:', {
+        ativos: data.ativos?.length || 0,
+        expirados: data.expirados?.length || 0,
+        testes: data.testes?.length || 0,
+        conversoes: data.conversoes?.length || 0,
+        renovacoes: data.renovacoes?.length || 0,
+      });
 
       // Processar dados recebidos
       const processedData = {

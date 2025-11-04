@@ -1,12 +1,12 @@
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Users, CheckCircle, XCircle, TrendingDown, DollarSign, Target, Heart, Calendar, MapPin, Wifi, TrendingUp, Sparkles, Trophy, AlertTriangle, Zap, BarChart2, RefreshCw, Flame } from 'lucide-react';
+import { Users, CheckCircle, XCircle, TrendingDown, DollarSign, Target, Heart, Calendar, MapPin, Wifi, TrendingUp, Sparkles, Trophy, AlertTriangle, Zap, BarChart2, RefreshCw, Flame, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardData } from '../App';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { parseDate, formatDate } from '../utils/dataProcessing';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getMockBrazilianOrImportantGames } from '../utils/mockGamesData';
 
 interface Props {
@@ -104,20 +104,30 @@ function recomendarDiasParaAds(data: DashboardData): { dia: string; motivo: stri
   return recomendacoes.slice(0, 3);
 }
 
+// Função auxiliar para normalizar data (apenas dia/mês/ano, sem hora/timezone)
+function normalizarData(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function calcularVencimentosPorDia(data: DashboardData): { dia: string; data: Date; count: number; label: string }[] {
-  const hoje = new Date();
+  // Garantir data local correta (sem problemas de timezone)
+  const agora = new Date();
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
   const proximos7Dias: { dia: string; data: Date; count: number; label: string }[] = [];
   
   for (let i = 0; i < 7; i++) {
     const dataAtual = new Date(hoje);
     dataAtual.setDate(hoje.getDate() + i);
+    const dataAtualNormalizada = normalizarData(dataAtual);
     
     // Verificar se rawData e ativos existem antes de filtrar
     const vencimentos = (data.rawData?.ativos && Array.isArray(data.rawData.ativos)) 
       ? data.rawData.ativos.filter((ativo: any) => {
           const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em || ativo.Expiracao || ativo.expiracao);
           if (!expiraEm) return false;
-          return expiraEm.toDateString() === dataAtual.toDateString();
+          // Normalizar ambas as datas para comparação sem timezone
+          const expiraEmNormalizada = normalizarData(expiraEm);
+          return expiraEmNormalizada === dataAtualNormalizada;
         }).length
       : 0;
     
@@ -155,6 +165,7 @@ interface JogoFutebol {
 export function IPTVDashboard({ data, onNavigateToGames }: Props) {
   const [jogosDaSemana, setJogosDaSemana] = useState<JogoFutebol[]>([]);
   const [loadingJogos, setLoadingJogos] = useState(false);
+  const [diaSelecionado, setDiaSelecionado] = useState(0); // 0 = hoje, 1 = ontem, 2 = anteontem...
   
   // Função para carregar jogos (apenas mock - sem API)
   const carregarJogosMock = () => {
@@ -358,6 +369,150 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
   const { perdidos, taxaPerda } = analisarPerdasSemanais(data);
   const comparativoRenovacoes = calcularRenovacoesMesPassado(data);
 
+  // ===================================
+  // CALCULAR DADOS DO DIA SELECIONADO
+  // ===================================
+  const dadosDoDiaSelecionado = useMemo(() => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const diaTarget = new Date(hoje);
+    diaTarget.setDate(hoje.getDate() - diaSelecionado);
+    
+    const isSameDay = (d1: Date | null, d2: Date): boolean => {
+      if (!d1) return false;
+      return (
+        d1.getFullYear() === d2.getFullYear() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getDate() === d2.getDate()
+      );
+    };
+
+    // Conversões do dia
+    const conversoesDia = (data.rawData?.conversoes || []).filter((c: any) => 
+      isSameDay(parseDate(c.Data || c.data), diaTarget)
+    );
+
+    // Renovações do dia
+    const renovacoesDia = (data.rawData?.renovacoes || []).filter((r: any) => 
+      isSameDay(parseDate(r.Data || r.data), diaTarget)
+    );
+
+    // Testes do dia
+    const testesDia = (data.rawData?.testes || []).filter((t: any) => 
+      isSameDay(parseDate(t.Criado_Em || t.criado_em), diaTarget)
+    );
+
+    // Expirados do dia
+    const expiradosDia = (data.rawData?.expirados || []).filter((e: any) => 
+      isSameDay(parseDate(e.Expira_Em || e.expira_em), diaTarget)
+    );
+
+    // Ativados do dia
+    const ativadosDia = (data.rawData?.ativos || []).filter((a: any) => 
+      isSameDay(parseDate(a.Criado_Em || a.criado_em), diaTarget)
+    );
+
+    // Calcular créditos gastos, receita e lucro
+    const creditosConversoes = conversoesDia.reduce((sum: number, c: any) => sum + (c.Custo || c.custo || 0), 0);
+    const creditosRenovacoes = renovacoesDia.reduce((sum: number, r: any) => sum + (r.Custo || r.custo || 0), 0);
+    const creditosGastos = creditosConversoes + creditosRenovacoes;
+    
+    const receita = creditosGastos * 30; // Créditos × R$ 30
+    const custo = creditosGastos * 6.5; // Créditos × R$ 6,50
+    const lucro = receita - custo;
+
+    return {
+      conversoes: conversoesDia.length,
+      renovacoes: renovacoesDia.length,
+      testes: testesDia.length,
+      expirados: expiradosDia.length,
+      ativados: ativadosDia.length,
+      creditosGastos,
+      receita,
+      lucro
+    };
+  }, [data, diaSelecionado]);
+
+  // ===================================
+  // CALCULAR DADOS POR HORA DO DIA SELECIONADO
+  // ===================================
+  const dadosPorHora = useMemo(() => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const diaTarget = new Date(hoje);
+    diaTarget.setDate(hoje.getDate() - diaSelecionado);
+    
+    const isSameDay = (d1: Date | null, d2: Date): boolean => {
+      if (!d1) return false;
+      return (
+        d1.getFullYear() === d2.getFullYear() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getDate() === d2.getDate()
+      );
+    };
+
+    // Inicializar array de 24 horas
+    const porHora = Array.from({ length: 24 }, (_, hora) => ({
+      hora: `${hora.toString().padStart(2, '0')}h`,
+      testes: 0,
+      conversoes: 0,
+      renovacoes: 0
+    }));
+
+    // Contar testes por hora
+    (data.rawData?.testes || []).forEach((t: any) => {
+      const data = parseDate(t.Criado_Em || t.criado_em);
+      if (data && isSameDay(data, diaTarget)) {
+        const hora = data.getHours();
+        porHora[hora].testes++;
+      }
+    });
+
+    // Contar conversões por hora
+    (data.rawData?.conversoes || []).forEach((c: any) => {
+      const data = parseDate(c.Data || c.data);
+      if (data && isSameDay(data, diaTarget)) {
+        const hora = data.getHours();
+        porHora[hora].conversoes++;
+      }
+    });
+
+    // Contar renovações por hora
+    (data.rawData?.renovacoes || []).forEach((r: any) => {
+      const data = parseDate(r.Data || r.data);
+      if (data && isSameDay(data, diaTarget)) {
+        const hora = data.getHours();
+        porHora[hora].renovacoes++;
+      }
+    });
+
+    return porHora;
+  }, [data, diaSelecionado]);
+
+  // Função para mudar o dia
+  const mudarDia = (dias: number) => {
+    setDiaSelecionado(Math.max(0, diaSelecionado + dias));
+  };
+
+  // Obter label do dia selecionado
+  const getLabelDia = () => {
+    if (diaSelecionado === 0) return 'Hoje';
+    if (diaSelecionado === 1) return 'Ontem';
+    if (diaSelecionado === 2) return 'Anteontem';
+    
+    const hoje = new Date();
+    const dia = new Date(hoje);
+    dia.setDate(hoje.getDate() - diaSelecionado);
+    return dia.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  // Debug
+  console.log('📊 Overview - Dados do dia selecionado:', {
+    dia: getLabelDia(),
+    dadosDoDia: dadosDoDiaSelecionado,
+    totalHorasComAtividade: dadosPorHora.filter(h => h.testes > 0 || h.conversoes > 0 || h.renovacoes > 0).length
+  });
+
   return (
     <div className="space-y-6">
       {/* Insights Banner */}
@@ -431,6 +586,330 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
                 <>{(data.taxaRetencao || 0).toFixed(1)}% <span className="text-xs text-white/60 ml-1">mantidos</span></>
               )}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Card HOJE - Métricas do Dia Selecionado */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#00BFFF]/15 via-[#0B0F18] to-[#FF00CC]/15 rounded-2xl p-6 border-2 border-[#00BFFF]/50 shadow-2xl shadow-[#00BFFF]/30">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 20px 20px, #00BFFF 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        
+        <div className="relative z-10">
+          {/* Header com Seletor de Dia */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00BFFF] to-[#FF00CC] blur-xl opacity-70 animate-pulse"></div>
+                <div className="relative w-12 h-12 bg-gradient-to-br from-[#00BFFF] to-[#FF00CC] rounded-xl flex items-center justify-center shadow-lg shadow-[#00BFFF]/50">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-[#EAF2FF] text-xl font-semibold tracking-tight">
+                  📊 Resumo de {getLabelDia()}
+                </h3>
+                <p className="text-[#9FAAC6] text-xs mt-0.5">
+                  {(() => {
+                    const hoje = new Date();
+                    const dia = new Date(hoje);
+                    dia.setDate(hoje.getDate() - diaSelecionado);
+                    return dia.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+                  })()}
+                </p>
+              </div>
+            </div>
+
+            {/* Seletor de Dia */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => mudarDia(1)}
+                variant="outline"
+                size="sm"
+                className="bg-[#0B0F18]/50 border-[#00BFFF]/30 hover:bg-[#00BFFF]/10 hover:border-[#00BFFF]/50 text-[#00BFFF] transition-all"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Anterior
+              </Button>
+              <Button
+                onClick={() => mudarDia(-1)}
+                disabled={diaSelecionado === 0}
+                variant="outline"
+                size="sm"
+                className="bg-[#0B0F18]/50 border-[#00BFFF]/30 hover:bg-[#00BFFF]/10 hover:border-[#00BFFF]/50 text-[#00BFFF] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                Próximo
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Grid de Métricas */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              {/* Testes */}
+              <div className="bg-gradient-to-br from-[#a48bff]/20 to-[#a48bff]/5 rounded-xl p-4 border border-[#a48bff]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-[#a48bff]" />
+                  <span className="text-[#9FAAC6] text-xs">Testes</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.testes}</p>
+                <p className="text-[#a48bff] text-xs mt-1">iniciados</p>
+              </div>
+
+              {/* Conversões */}
+              <div className="bg-gradient-to-br from-[#00BFFF]/20 to-[#00BFFF]/5 rounded-xl p-4 border border-[#00BFFF]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-[#00BFFF]" />
+                  <span className="text-[#9FAAC6] text-xs">Conversões</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.conversoes}</p>
+                <p className="text-[#00BFFF] text-xs mt-1">novos clientes</p>
+              </div>
+
+              {/* Renovações */}
+              <div className="bg-gradient-to-br from-[#10b981]/20 to-[#10b981]/5 rounded-xl p-4 border border-[#10b981]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <RefreshCw className="w-4 h-4 text-[#10b981]" />
+                  <span className="text-[#9FAAC6] text-xs">Renovações</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.renovacoes}</p>
+                <p className="text-[#10b981] text-xs mt-1">renovaram</p>
+              </div>
+
+              {/* Ativados */}
+              <div className="bg-gradient-to-br from-[#7B5CFF]/20 to-[#7B5CFF]/5 rounded-xl p-4 border border-[#7B5CFF]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-4 h-4 text-[#7B5CFF]" />
+                  <span className="text-[#9FAAC6] text-xs">Ativados</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.ativados}</p>
+                <p className="text-[#7B5CFF] text-xs mt-1">novos ativos</p>
+              </div>
+
+              {/* Expirados */}
+              <div className="bg-gradient-to-br from-[#ef4444]/20 to-[#ef4444]/5 rounded-xl p-4 border border-[#ef4444]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <XCircle className="w-4 h-4 text-[#ef4444]" />
+                  <span className="text-[#9FAAC6] text-xs">Expirados</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.expirados}</p>
+                <p className="text-[#ef4444] text-xs mt-1">venceram</p>
+              </div>
+
+              {/* Créditos Gastos */}
+              <div className="bg-gradient-to-br from-[#f59e0b]/20 to-[#f59e0b]/5 rounded-xl p-4 border border-[#f59e0b]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Flame className="w-4 h-4 text-[#f59e0b]" />
+                  <span className="text-[#9FAAC6] text-xs">Créditos</span>
+                </div>
+                <p className="text-white text-2xl font-bold">{dadosDoDiaSelecionado.creditosGastos}</p>
+                <p className="text-[#f59e0b] text-xs mt-1">gastos</p>
+              </div>
+
+              {/* Receita */}
+              <div className="bg-gradient-to-br from-[#10b981]/20 to-[#10b981]/5 rounded-xl p-4 border border-[#10b981]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-4 h-4 text-[#10b981]" />
+                  <span className="text-[#9FAAC6] text-xs">Receita</span>
+                </div>
+                <p className="text-white text-2xl font-bold">R$ {dadosDoDiaSelecionado.receita.toFixed(0)}</p>
+                <p className="text-[#10b981] text-xs mt-1">faturado</p>
+              </div>
+
+              {/* Lucro */}
+              <div className="bg-gradient-to-br from-[#FF00CC]/20 to-[#FF00CC]/5 rounded-xl p-4 border border-[#FF00CC]/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-[#FF00CC]" />
+                  <span className="text-[#9FAAC6] text-xs">Lucro</span>
+                </div>
+                <p className="text-white text-2xl font-bold">R$ {dadosDoDiaSelecionado.lucro.toFixed(0)}</p>
+                <p className="text-[#FF00CC] text-xs mt-1">estimado</p>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      {/* Gráfico de Atividade por Hora */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#7B5CFF]/10 via-[#0B0F18] to-[#00BFFF]/10 rounded-2xl p-6 border-2 border-[#7B5CFF]/40 shadow-2xl shadow-[#7B5CFF]/20">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 20px 20px, #7B5CFF 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#7B5CFF] to-[#00BFFF] blur-lg opacity-60 animate-pulse"></div>
+              <div className="relative w-12 h-12 bg-gradient-to-br from-[#7B5CFF] to-[#00BFFF] rounded-xl flex items-center justify-center shadow-lg shadow-[#7B5CFF]/50">
+                <BarChart2 className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-[#EAF2FF] text-xl font-semibold tracking-tight">
+                📈 Atividade por Hora - {getLabelDia()}
+              </h3>
+              <p className="text-[#9FAAC6] text-xs mt-0.5">
+                Testes, Conversões e Renovações ao longo do dia
+              </p>
+            </div>
+          </div>
+
+          {/* Gráfico */}
+          <ResponsiveContainer width="100%" height={380}>
+            <LineChart 
+              data={dadosPorHora}
+              margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
+            >
+              <defs>
+                <linearGradient id="colorTestes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#a48bff" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#a48bff" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorConversoes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#00BFFF" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#00BFFF" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorRenovacoes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+              <XAxis 
+                dataKey="hora" 
+                stroke="#9FAAC6"
+                tick={{ fill: '#9FAAC6', fontSize: 11 }}
+                tickLine={{ stroke: '#334155' }}
+              />
+              <YAxis 
+                stroke="#9FAAC6"
+                tick={{ fill: '#9FAAC6', fontSize: 11 }}
+                tickLine={{ stroke: '#334155' }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#0B0F18', 
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                }}
+                labelStyle={{ color: '#EAF2FF' }}
+                itemStyle={{ color: '#9FAAC6' }}
+              />
+              <Legend 
+                wrapperStyle={{ color: '#EAF2FF' }}
+                iconType="circle"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="testes" 
+                stroke="#a48bff" 
+                strokeWidth={2.5}
+                dot={{ fill: '#a48bff', r: 4 }}
+                activeDot={{ r: 6 }}
+                name="Testes"
+                fillOpacity={1}
+                fill="url(#colorTestes)"
+                label={(props: any) => {
+                  const { x, y, value } = props;
+                  if (value === 0) return null;
+                  return (
+                    <text 
+                      x={x} 
+                      y={y - 10} 
+                      fill="#a48bff" 
+                      textAnchor="middle" 
+                      fontSize={11}
+                      fontWeight="600"
+                    >
+                      {value}
+                    </text>
+                  );
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="conversoes" 
+                stroke="#00BFFF" 
+                strokeWidth={2.5}
+                dot={{ fill: '#00BFFF', r: 4 }}
+                activeDot={{ r: 6 }}
+                name="Conversões"
+                fillOpacity={1}
+                fill="url(#colorConversoes)"
+                label={(props: any) => {
+                  const { x, y, value } = props;
+                  if (value === 0) return null;
+                  return (
+                    <text 
+                      x={x} 
+                      y={y - 10} 
+                      fill="#00BFFF" 
+                      textAnchor="middle" 
+                      fontSize={11}
+                      fontWeight="600"
+                    >
+                      {value}
+                    </text>
+                  );
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="renovacoes" 
+                stroke="#10b981" 
+                strokeWidth={2.5}
+                dot={{ fill: '#10b981', r: 4 }}
+                activeDot={{ r: 6 }}
+                name="Renovações"
+                fillOpacity={1}
+                fill="url(#colorRenovacoes)"
+                label={(props: any) => {
+                  const { x, y, value } = props;
+                  if (value === 0) return null;
+                  return (
+                    <text 
+                      x={x} 
+                      y={y - 10} 
+                      fill="#10b981" 
+                      textAnchor="middle" 
+                      fontSize={11}
+                      fontWeight="600"
+                    >
+                      {value}
+                    </text>
+                  );
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+
+          {/* Resumo do Dia */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex items-center gap-2 bg-[#a48bff]/10 border border-[#a48bff]/30 rounded-lg px-4 py-2 backdrop-blur-sm">
+              <Activity className="w-4 h-4 text-[#a48bff]" />
+              <span className="text-[#9FAAC6] text-sm">Total de Testes:</span>
+              <span className="text-[#a48bff] font-bold text-lg">{dadosDoDiaSelecionado.testes}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#00BFFF]/10 border border-[#00BFFF]/30 rounded-lg px-4 py-2 backdrop-blur-sm">
+              <Target className="w-4 h-4 text-[#00BFFF]" />
+              <span className="text-[#9FAAC6] text-sm">Total de Conversões:</span>
+              <span className="text-[#00BFFF] font-bold text-lg">{dadosDoDiaSelecionado.conversoes}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-lg px-4 py-2 backdrop-blur-sm">
+              <RefreshCw className="w-4 h-4 text-[#10b981]" />
+              <span className="text-[#9FAAC6] text-sm">Total de Renovações:</span>
+              <span className="text-[#10b981] font-bold text-lg">{dadosDoDiaSelecionado.renovacoes}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -682,6 +1161,8 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
                 {calcularVencimentosPorDia(data).map((item, idx) => {
                   const maxCount = Math.max(...calcularVencimentosPorDia(data).map(d => d.count), 1);
                   const intensity = item.count / maxCount;
+                  // Formatar data como DD/MM
+                  const dataFormatada = `${item.data.getDate()}/${item.data.getMonth() + 1}`;
                   return (
                     <div key={idx} className="flex flex-col items-center">
                       <div 
@@ -695,7 +1176,7 @@ export function IPTVDashboard({ data, onNavigateToGames }: Props) {
                         }}
                       >
                         <span className={`text-[10px] ${item.count > 0 ? 'text-emerald-200' : 'text-[#9FAAC6]'}`}>
-                          {item.dia}
+                          {dataFormatada}
                         </span>
                         {item.count > 0 && (
                           <span className="text-white text-xs mt-0.5">{item.count}</span>

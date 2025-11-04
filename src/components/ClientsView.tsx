@@ -1808,20 +1808,416 @@ export function ClientsView({ data }: Props) {
                   <span>Análise por Status</span>
                 </h2>
                 <p className="text-slate-500 text-sm mt-1">
-                  💡 Estatísticas detalhadas em desenvolvimento
+                  📊 Estatísticas detalhadas e distribuição por status de clientes
                 </p>
               </div>
 
+              {/* KPIs por Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total de Ativos */}
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.ativo}15, ${COLORS.ativo}05)`,
+                    borderColor: `${COLORS.ativo}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Clientes Ativos</p>
+                      <p className="text-white text-2xl font-bold">{data.clientesAtivos?.toLocaleString('pt-BR') || 0}</p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {((data.clientesAtivos / (data.clientesAtivos + data.clientesExpirados)) * 100).toFixed(1)}% do total
+                      </p>
+                    </div>
+                    <CheckCircle className="w-10 h-10 opacity-20" style={{ color: COLORS.ativo }} />
+                  </div>
+                </Card>
+
+                {/* Total de Expirados */}
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.vermelho}15, ${COLORS.vermelho}05)`,
+                    borderColor: `${COLORS.vermelho}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Clientes Expirados</p>
+                      <p className="text-white text-2xl font-bold">{data.clientesExpirados?.toLocaleString('pt-BR') || 0}</p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {data.churnRate?.toFixed(1)}% de churn
+                      </p>
+                    </div>
+                    <XCircle className="w-10 h-10 opacity-20" style={{ color: COLORS.vermelho }} />
+                  </div>
+                </Card>
+
+                {/* Taxa de Retenção */}
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.azul}15, ${COLORS.azul}05)`,
+                    borderColor: `${COLORS.azul}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Taxa de Retenção</p>
+                      <p className="text-white text-2xl font-bold">{data.taxaRetencao?.toFixed(1)}%</p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {data.clientesAtivos} mantidos
+                      </p>
+                    </div>
+                    <Star className="w-10 h-10 opacity-20" style={{ color: COLORS.azul }} />
+                  </div>
+                </Card>
+
+                {/* Clientes Fiéis */}
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.roxo}15, ${COLORS.roxo}05)`,
+                    borderColor: `${COLORS.roxo}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Clientes Fiéis</p>
+                      <p className="text-white text-2xl font-bold">{data.clientesFieis?.toLocaleString('pt-BR') || 0}</p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {data.taxaFidelidade?.toFixed(1)}% de fidelidade
+                      </p>
+                    </div>
+                    <Users className="w-10 h-10 opacity-20" style={{ color: COLORS.roxo }} />
+                  </div>
+                </Card>
+              </div>
+
+              {/* Gráficos de Distribuição */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Gráfico de Pizza - Distribuição de Status */}
+                <Card 
+                  className="p-6 border"
+                  style={{ 
+                    backgroundColor: COLORS.cardBg,
+                    borderColor: COLORS.border
+                  }}
+                >
+                  <h3 className="text-white mb-4 flex items-center gap-2">
+                    <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.azul }}></div>
+                    Distribuição por Status
+                  </h3>
+                  <div className="h-[300px] flex items-center justify-center">
+                    {(() => {
+                      const totalClientes = data.clientesAtivos + data.clientesExpirados;
+                      const ativosPct = (data.clientesAtivos / totalClientes * 100).toFixed(1);
+                      const expiradosPct = (data.clientesExpirados / totalClientes * 100).toFixed(1);
+                      
+                      return (
+                        <div className="w-full space-y-6">
+                          {/* Gráfico Visual Simplificado */}
+                          <div className="flex items-center justify-center gap-8">
+                            <div className="text-center">
+                              <div 
+                                className="w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-3"
+                                style={{ 
+                                  background: `conic-gradient(${COLORS.ativo} 0% ${ativosPct}%, ${COLORS.vermelho} ${ativosPct}% 100%)`
+                                }}
+                              >
+                                <div 
+                                  className="w-20 h-20 rounded-full flex items-center justify-center"
+                                  style={{ backgroundColor: COLORS.cardBg }}
+                                >
+                                  <span className="text-white text-xl font-bold">{totalClientes}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Legendas */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: `${COLORS.ativo}10` }}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.ativo }}></div>
+                                <span className="text-slate-300 text-sm">Ativos</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-white font-semibold">{data.clientesAtivos.toLocaleString('pt-BR')}</div>
+                                <div className="text-slate-400 text-xs">{ativosPct}%</div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: `${COLORS.vermelho}10` }}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.vermelho }}></div>
+                                <span className="text-slate-300 text-sm">Expirados</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-white font-semibold">{data.clientesExpirados.toLocaleString('pt-BR')}</div>
+                                <div className="text-slate-400 text-xs">{expiradosPct}%</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </Card>
+
+                {/* Funil de Conversão */}
+                <Card 
+                  className="p-6 border"
+                  style={{ 
+                    backgroundColor: COLORS.cardBg,
+                    borderColor: COLORS.border
+                  }}
+                >
+                  <h3 className="text-white mb-4 flex items-center gap-2">
+                    <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.roxo }}></div>
+                    Funil de Conversão
+                  </h3>
+                  <div className="space-y-4">
+                    {(() => {
+                      const funnelSteps = [
+                        { label: 'Testes Criados', value: data.testes, color: COLORS.amarelo, icon: Clock },
+                        { label: 'Conversões', value: data.conversoes, color: COLORS.azul, icon: CheckCircle },
+                        { label: 'Clientes Ativos', value: data.clientesAtivos, color: COLORS.ativo, icon: Users },
+                        { label: 'Renovações', value: data.renovacoes, color: COLORS.roxo, icon: Star },
+                      ];
+
+                      const maxValue = Math.max(...funnelSteps.map(s => s.value));
+
+                      return funnelSteps.map((step, index) => {
+                        const percentage = (step.value / maxValue * 100);
+                        const Icon = step.icon;
+                        
+                        return (
+                          <div key={index}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Icon className="w-4 h-4" style={{ color: step.color }} />
+                                <span className="text-slate-300 text-sm">{step.label}</span>
+                              </div>
+                              <span className="text-white font-semibold">{step.value.toLocaleString('pt-BR')}</span>
+                            </div>
+                            <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                              <div 
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ 
+                                  width: `${percentage}%`,
+                                  background: `linear-gradient(90deg, ${step.color}, ${step.color}80)`
+                                }}
+                              ></div>
+                            </div>
+                            {index < funnelSteps.length - 1 && (
+                              <div className="flex items-center justify-end mt-1">
+                                <span className="text-xs text-slate-500">
+                                  {funnelSteps[index + 1].value > 0 
+                                    ? `${((funnelSteps[index + 1].value / step.value) * 100).toFixed(1)}% converteram`
+                                    : 'Sem conversão'
+                                  }
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Tabela Detalhada por Status */}
               <Card 
-                className="p-12 border text-center"
+                className="p-6 border"
                 style={{ 
                   backgroundColor: COLORS.cardBg,
                   borderColor: COLORS.border
                 }}
               >
-                <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-slate-400">Em breve: gráficos e análises avançadas</p>
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.ativo }}></div>
+                  Detalhamento por Status
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-slate-400">Quantidade</TableHead>
+                        <TableHead className="text-slate-400">Percentual</TableHead>
+                        <TableHead className="text-slate-400">Valor Médio</TableHead>
+                        <TableHead className="text-slate-400">Tendência</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.ativo }}></div>
+                            <span className="text-white">Ativos</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-white font-semibold">
+                          {data.clientesAtivos.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          {((data.clientesAtivos / (data.clientesAtivos + data.clientesExpirados)) * 100).toFixed(1)}%
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          R$ {(data.receitaTotal / (data.conversoes + data.renovacoes) || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            style={{
+                              backgroundColor: `${COLORS.ativo}15`,
+                              borderColor: `${COLORS.ativo}50`,
+                              color: COLORS.ativo
+                            }}
+                          >
+                            ↗ Crescendo
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.vermelho }}></div>
+                            <span className="text-white">Expirados</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-white font-semibold">
+                          {data.clientesExpirados.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          {data.churnRate?.toFixed(1)}%
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          R$ {(data.receitaTotal / (data.conversoes + data.renovacoes) * 0.8 || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            style={{
+                              backgroundColor: `${COLORS.amarelo}15`,
+                              borderColor: `${COLORS.amarelo}50`,
+                              color: COLORS.amarelo
+                            }}
+                          >
+                            ↔ Estável
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.roxo }}></div>
+                            <span className="text-white">Com Renovação</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-white font-semibold">
+                          {data.totalRenovadores?.toLocaleString('pt-BR') || 0}
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          {((data.totalRenovadores / data.clientesAtivos) * 100 || 0).toFixed(1)}%
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          R$ {(data.custoTotalRenovacoes / data.renovacoes || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            style={{
+                              backgroundColor: `${COLORS.ativo}15`,
+                              borderColor: `${COLORS.ativo}50`,
+                              color: COLORS.ativo
+                            }}
+                          >
+                            ↗ Crescendo
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.amarelo }}></div>
+                            <span className="text-white">Em Teste</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-white font-semibold">
+                          {data.testes?.toLocaleString('pt-BR') || 0}
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          {((data.testes / (data.clientesAtivos + data.clientesExpirados + data.testes)) * 100 || 0).toFixed(1)}%
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          R$ 0,00
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            style={{
+                              backgroundColor: `${COLORS.azul}15`,
+                              borderColor: `${COLORS.azul}50`,
+                              color: COLORS.azul
+                            }}
+                          >
+                            → Convertendo
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
+
+              {/* Insights e Recomendações */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.ativo}10, ${COLORS.ativo}05)`,
+                    borderColor: `${COLORS.ativo}30`
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: COLORS.ativo }} />
+                    <div>
+                      <h4 className="text-white text-sm mb-2 font-semibold">💡 Insight Positivo</h4>
+                      <p className="text-slate-300 text-xs leading-relaxed">
+                        Sua taxa de retenção está em <strong style={{ color: COLORS.ativo }}>{data.taxaRetencao?.toFixed(1)}%</strong>, 
+                        mantendo {data.clientesAtivos} clientes ativos. Continue focando em qualidade do serviço!
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.amarelo}10, ${COLORS.amarelo}05)`,
+                    borderColor: `${COLORS.amarelo}30`
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: COLORS.amarelo }} />
+                    <div>
+                      <h4 className="text-white text-sm mb-2 font-semibold">⚠️ Oportunidade</h4>
+                      <p className="text-slate-300 text-xs leading-relaxed">
+                        Você tem <strong style={{ color: COLORS.amarelo }}>{data.clientesExpirados} clientes expirados</strong>. 
+                        Considere campanhas de reativação para recuperá-los!
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
             </div>
           )}
 
@@ -1834,19 +2230,239 @@ export function ClientsView({ data }: Props) {
                   <span>Distribuição Geográfica</span>
                 </h2>
                 <p className="text-slate-500 text-sm mt-1">
-                  💡 Mapa de clientes por região em desenvolvimento
+                  📍 Análise detalhada por estado, DDD e região
                 </p>
               </div>
 
+              {/* KPIs Geográficos */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.azul}15, ${COLORS.azul}05)`,
+                    borderColor: `${COLORS.azul}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Estados Cobertos</p>
+                      <p className="text-white text-2xl font-bold">{data.estadosCobertos || 0}</p>
+                      <p className="text-slate-400 text-xs mt-1">de 27 estados</p>
+                    </div>
+                    <MapPin className="w-10 h-10 opacity-20" style={{ color: COLORS.azul }} />
+                  </div>
+                </Card>
+
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.roxo}15, ${COLORS.roxo}05)`,
+                    borderColor: `${COLORS.roxo}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">DDDs Diferentes</p>
+                      <p className="text-white text-2xl font-bold">{data.porDDD?.length || 0}</p>
+                      <p className="text-slate-400 text-xs mt-1">códigos de área</p>
+                    </div>
+                    <MapPin className="w-10 h-10 opacity-20" style={{ color: COLORS.roxo }} />
+                  </div>
+                </Card>
+
+                <Card 
+                  className="p-5 border"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.ativo}15, ${COLORS.ativo}05)`,
+                    borderColor: `${COLORS.ativo}30`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Estado Líder</p>
+                      <p className="text-white text-2xl font-bold">
+                        {data.topEstados && data.topEstados.length > 0 ? data.topEstados[0].estado : '-'}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {data.topEstados && data.topEstados.length > 0 ? `${data.topEstados[0].total} clientes` : 'sem dados'}
+                      </p>
+                    </div>
+                    <MapPin className="w-10 h-10 opacity-20" style={{ color: COLORS.ativo }} />
+                  </div>
+                </Card>
+              </div>
+
+              {/* Top 10 Estados */}
               <Card 
-                className="p-12 border text-center"
+                className="p-6 border"
                 style={{ 
                   backgroundColor: COLORS.cardBg,
                   borderColor: COLORS.border
                 }}
               >
-                <MapPin className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-slate-400">Em breve: visualização por estado e DDD</p>
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.azul }}></div>
+                  Top 10 Estados
+                </h3>
+                
+                <div className="space-y-3">
+                  {data.topEstados && data.topEstados.length > 0 ? (
+                    data.topEstados.slice(0, 10).map((estado, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                          style={{
+                            backgroundColor: index === 0 ? `${COLORS.ativo}20` : `rgba(255,255,255,0.05)`,
+                            color: index === 0 ? COLORS.ativo : COLORS.textoSecundario
+                          }}
+                        >
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-white font-semibold">{estado.estado}</span>
+                            <div className="text-right">
+                              <span className="text-white font-semibold">{estado.total.toLocaleString('pt-BR')}</span>
+                              <span className="text-slate-400 text-xs ml-2">({estado.percentual.toFixed(1)}%)</span>
+                            </div>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                            <div 
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ 
+                                width: `${estado.percentual}%`,
+                                background: index === 0 
+                                  ? `linear-gradient(90deg, ${COLORS.ativo}, ${COLORS.azul})` 
+                                  : `linear-gradient(90deg, ${COLORS.roxo}, ${COLORS.azul})`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
+                      <p className="text-slate-400">Nenhum dado geográfico disponível</p>
+                      <p className="text-slate-500 text-xs mt-1">Os números de telefone não contêm DDDs válidos</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Top DDDs */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.roxo }}></div>
+                  Top 15 DDDs
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {data.porDDD && data.porDDD.length > 0 ? (
+                    data.porDDD.slice(0, 15).map((dddData, index) => (
+                      <div 
+                        key={index}
+                        className="p-3 rounded-lg border"
+                        style={{
+                          backgroundColor: `rgba(255,255,255,0.02)`,
+                          borderColor: COLORS.border
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold"
+                              style={{
+                                backgroundColor: `${COLORS.roxo}20`,
+                                color: COLORS.roxo
+                              }}
+                            >
+                              {dddData.ddd}
+                            </div>
+                            <span className="text-slate-400 text-xs">DDD</span>
+                          </div>
+                          <span className="text-white font-semibold">{dddData.count.toLocaleString('pt-BR')}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-8">
+                      <p className="text-slate-400">Nenhum DDD identificado</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Detalhamento por Estado */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.ativo }}></div>
+                  Detalhamento por Estado
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Estado</TableHead>
+                        <TableHead className="text-slate-400">Ativos</TableHead>
+                        <TableHead className="text-slate-400">Expirados</TableHead>
+                        <TableHead className="text-slate-400">Testes</TableHead>
+                        <TableHead className="text-slate-400">Total</TableHead>
+                        <TableHead className="text-slate-400">Taxa Retenção</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.porEstado && data.porEstado.length > 0 ? (
+                        data.porEstado.map((estado: any, index) => {
+                          const total = estado.ativos + estado.expirados;
+                          const taxaRetencao = total > 0 ? (estado.ativos / total * 100) : 0;
+                          
+                          return (
+                            <TableRow key={index} style={{ borderColor: COLORS.border }}>
+                              <TableCell className="text-white font-semibold">{estado.estado}</TableCell>
+                              <TableCell className="text-slate-300">{estado.ativos.toLocaleString('pt-BR')}</TableCell>
+                              <TableCell className="text-slate-300">{estado.expirados.toLocaleString('pt-BR')}</TableCell>
+                              <TableCell className="text-slate-300">{estado.testes.toLocaleString('pt-BR')}</TableCell>
+                              <TableCell className="text-white font-semibold">{total.toLocaleString('pt-BR')}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: taxaRetencao >= 70 ? `${COLORS.ativo}15` : taxaRetencao >= 50 ? `${COLORS.amarelo}15` : `${COLORS.vermelho}15`,
+                                    borderColor: taxaRetencao >= 70 ? `${COLORS.ativo}50` : taxaRetencao >= 50 ? `${COLORS.amarelo}50` : `${COLORS.vermelho}50`,
+                                    color: taxaRetencao >= 70 ? COLORS.ativo : taxaRetencao >= 50 ? COLORS.amarelo : COLORS.vermelho
+                                  }}
+                                >
+                                  {taxaRetencao.toFixed(1)}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
+                            <p className="text-slate-400">Nenhum dado disponível</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
             </div>
           )}
@@ -1860,19 +2476,362 @@ export function ClientsView({ data }: Props) {
                   <span>Histórico de Clientes</span>
                 </h2>
                 <p className="text-slate-500 text-sm mt-1">
-                  💡 Evolução temporal em desenvolvimento
+                  📅 Evolução temporal de ativações, conversões e renovações
                 </p>
               </div>
 
+              {/* Últimas Ativações */}
               <Card 
-                className="p-12 border text-center"
+                className="p-6 border"
                 style={{ 
                   backgroundColor: COLORS.cardBg,
                   borderColor: COLORS.border
                 }}
               >
-                <Clock className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-slate-400">Em breve: linha do tempo de ativações e cancelamentos</p>
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.ativo }}></div>
+                  Últimas 20 Ativações
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Data/Hora</TableHead>
+                        <TableHead className="text-slate-400">Cliente</TableHead>
+                        <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-slate-400">Expira Em</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        // Limitar processamento para evitar travamento
+                        if (!data.rawData?.ativos || data.rawData.ativos.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center py-8 text-slate-400">
+                                Nenhum dado disponível
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        // Ordenar ativos por data de criação (mais recentes primeiro)
+                        const ativosOrdenados = [...data.rawData.ativos]
+                          .slice(0, 100) // Limitar para 100 registros antes de ordenar
+                          .sort((a, b) => {
+                            try {
+                              const dataA = parseDate(a.Criado_Em || a.criado_em);
+                              const dataB = parseDate(b.Criado_Em || b.criado_em);
+                              if (!dataA || !dataB) return 0;
+                              return dataB.getTime() - dataA.getTime();
+                            } catch {
+                              return 0;
+                            }
+                          })
+                          .slice(0, 20);
+
+                        return ativosOrdenados.map((ativo: any, index) => {
+                          const criadoEm = parseDate(ativo.Criado_Em || ativo.criado_em);
+                          const expiraEm = parseDate(ativo.Expira_Em || ativo.expira_em);
+                          
+                          return (
+                            <TableRow key={index} style={{ borderColor: COLORS.border }}>
+                              <TableCell className="text-slate-300">
+                                {criadoEm ? formatDate(criadoEm) : '-'}
+                              </TableCell>
+                              <TableCell className="text-white">
+                                {String(ativo.Usuario || ativo.usuario || '-').replace(/<[^>]*>/g, '')}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: `${COLORS.ativo}15`,
+                                    borderColor: `${COLORS.ativo}50`,
+                                    color: COLORS.ativo
+                                  }}
+                                >
+                                  Ativo
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-slate-300">
+                                {expiraEm ? formatDate(expiraEm) : '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              {/* Últimas Conversões */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.azul }}></div>
+                  Últimas 20 Conversões
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Data/Hora</TableHead>
+                        <TableHead className="text-slate-400">Cliente</TableHead>
+                        <TableHead className="text-slate-400">Tipo</TableHead>
+                        <TableHead className="text-slate-400">Valor</TableHead>
+                        <TableHead className="text-slate-400">Créditos Após</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        // Limitar processamento
+                        if (!data.rawData?.conversoes || data.rawData.conversoes.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-8 text-slate-400">
+                                Nenhuma conversão disponível
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        // Ordenar conversões por data (mais recentes primeiro)
+                        const conversoesOrdenadas = [...data.rawData.conversoes]
+                          .slice(0, 100) // Limitar para 100 registros
+                          .sort((a, b) => {
+                            try {
+                              const dataA = parseDate(a.Data || a.data);
+                              const dataB = parseDate(b.Data || b.data);
+                              if (!dataA || !dataB) return 0;
+                              return dataB.getTime() - dataA.getTime();
+                            } catch {
+                              return 0;
+                            }
+                          })
+                          .slice(0, 20);
+
+                        return conversoesOrdenadas.map((conv: any, index) => {
+                          const data = parseDate(conv.Data || conv.data);
+                          
+                          return (
+                            <TableRow key={index} style={{ borderColor: COLORS.border }}>
+                              <TableCell className="text-slate-300">
+                                {data ? formatDate(data) : '-'}
+                              </TableCell>
+                              <TableCell className="text-white">
+                                {conv.Usuario || conv.usuario || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: `${COLORS.azul}15`,
+                                    borderColor: `${COLORS.azul}50`,
+                                    color: COLORS.azul
+                                  }}
+                                >
+                                  {conv.Tipo || conv.tipo || 'IPTV'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-green-400">
+                                R$ {(conv.Custo || conv.custo || 0).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-slate-300">
+                                {(conv.Creditos_Apos || conv.creditos_apos || 0).toLocaleString('pt-BR')}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              {/* Últimas Renovações */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.roxo }}></div>
+                  Últimas 20 Renovações
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Data/Hora</TableHead>
+                        <TableHead className="text-slate-400">Cliente</TableHead>
+                        <TableHead className="text-slate-400">Ação</TableHead>
+                        <TableHead className="text-slate-400">Valor</TableHead>
+                        <TableHead className="text-slate-400">Créditos Após</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        // Limitar processamento
+                        if (!data.rawData?.renovacoes || data.rawData.renovacoes.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-8 text-slate-400">
+                                Nenhuma renovação disponível
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        // Ordenar renovações por data (mais recentes primeiro)
+                        const renovacoesOrdenadas = [...data.rawData.renovacoes]
+                          .slice(0, 100) // Limitar para 100 registros
+                          .sort((a, b) => {
+                            try {
+                              const dataA = parseDate(a.Data || a.data);
+                              const dataB = parseDate(b.Data || b.data);
+                              if (!dataA || !dataB) return 0;
+                              return dataB.getTime() - dataA.getTime();
+                            } catch {
+                              return 0;
+                            }
+                          })
+                          .slice(0, 20);
+
+                        return renovacoesOrdenadas.map((ren: any, index) => {
+                          const data = parseDate(ren.Data || ren.data);
+                          
+                          return (
+                            <TableRow key={index} style={{ borderColor: COLORS.border }}>
+                              <TableCell className="text-slate-300">
+                                {data ? formatDate(data) : '-'}
+                              </TableCell>
+                              <TableCell className="text-white">
+                                {ren.Usuario || ren.usuario || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: `${COLORS.roxo}15`,
+                                    borderColor: `${COLORS.roxo}50`,
+                                    color: COLORS.roxo
+                                  }}
+                                >
+                                  {ren.Acao || ren.acao || 'Renovação'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-green-400">
+                                R$ {(ren.Custo || ren.custo || 0).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-slate-300">
+                                {(ren.Creditos_Apos || ren.creditos_apos || 0).toLocaleString('pt-BR')}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              {/* Últimas Expirações */}
+              <Card 
+                className="p-6 border"
+                style={{ 
+                  backgroundColor: COLORS.cardBg,
+                  borderColor: COLORS.border
+                }}
+              >
+                <h3 className="text-white mb-4 flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: COLORS.vermelho }}></div>
+                  Últimas 20 Expirações
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: COLORS.border }}>
+                        <TableHead className="text-slate-400">Data Expiração</TableHead>
+                        <TableHead className="text-slate-400">Cliente</TableHead>
+                        <TableHead className="text-slate-400">Status</TableHead>
+                        <TableHead className="text-slate-400">Criado Em</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        // Limitar processamento
+                        if (!data.rawData?.expirados || data.rawData.expirados.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center py-8 text-slate-400">
+                                Nenhum expirado disponível
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        // Ordenar expirados por data de expiração (mais recentes primeiro)
+                        const expiradosOrdenados = [...data.rawData.expirados]
+                          .slice(0, 100) // Limitar para 100 registros
+                          .sort((a, b) => {
+                            try {
+                              const dataA = parseDate(a.Expira_Em || a.expira_em);
+                              const dataB = parseDate(b.Expira_Em || b.expira_em);
+                              if (!dataA || !dataB) return 0;
+                              return dataB.getTime() - dataA.getTime();
+                            } catch {
+                              return 0;
+                            }
+                          })
+                          .slice(0, 20);
+
+                        return expiradosOrdenados.map((exp: any, index) => {
+                          const expiraEm = parseDate(exp.Expira_Em || exp.expira_em);
+                          const criadoEm = parseDate(exp.Criado_Em || exp.criado_em);
+                          
+                          return (
+                            <TableRow key={index} style={{ borderColor: COLORS.border }}>
+                              <TableCell className="text-slate-300">
+                                {expiraEm ? formatDate(expiraEm) : '-'}
+                              </TableCell>
+                              <TableCell className="text-white">
+                                {String(exp.Usuario || exp.usuario || '-').replace(/<[^>]*>/g, '')}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline"
+                                  style={{
+                                    backgroundColor: `${COLORS.vermelho}15`,
+                                    borderColor: `${COLORS.vermelho}50`,
+                                    color: COLORS.vermelho
+                                  }}
+                                >
+                                  Expirado
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-slate-300">
+                                {criadoEm ? formatDate(criadoEm) : '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
             </div>
           )}

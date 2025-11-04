@@ -455,6 +455,22 @@ export function mapCustoToPlano(custo: any): PlanoInfo {
 }
 
 /**
+ * Converte créditos gastos para valor em reais
+ * A coluna "Custo" da API representa CRÉDITOS (1, 1.5, 2, 3, 6, 12)
+ * Esta função retorna o VALOR EM REAIS correspondente
+ */
+export function creditosParaReais(creditos: any): number {
+  const plano = mapCustoToPlano(creditos);
+  return plano.precoMedio;
+}
+
+/**
+ * Custo de cada crédito (assumindo que o revendedor paga um valor fixo por crédito)
+ * Valor real: R$ 6,50 por crédito
+ */
+export const CUSTO_POR_CREDITO = 6.5;
+
+/**
  * Extrai hora da string ISO 8601
  */
 export function extractHourFromDate(date: Date | null): number {
