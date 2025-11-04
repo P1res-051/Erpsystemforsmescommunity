@@ -80,52 +80,65 @@ GET /api/painel/get-tests?cache_key=panel:data:usuarioX
 
 ---
 
-## 🔧 Problema: Formato de Data
+## 🔧 Formato Real da API: Datas Brasileiras
 
-### ❌ Formato da API
+### ✅ Formato da API (REAL)
 ```javascript
-"2024-10-02 09:00:00"  // ❌ Tem ESPAÇO entre data e hora
+"03/11/2025 18:16"  // ✅ Formato brasileiro DD/MM/YYYY HH:mm
+"03/11/2025 21:05"
+"02/12/2025 23:20"
 ```
 
-### ⚠️ Erro no Browser
+### ❌ Problema
 ```javascript
-new Date("2024-10-02 09:00:00")  // ❌ Invalid Date em alguns browsers
+new Date("03/11/2025 18:16")  // ❌ Invalid Date em alguns browsers
 ```
 
-### ✅ Solução: Normalizar para ISO-8601
+### ✅ Solução: Parse Manual com Regex
 ```javascript
-"2024-10-02T09:00:00"  // ✅ Com "T" funciona em todos os browsers
+// Regex: DD/MM/YYYY HH:mm
+const match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+const [, d, m, y, h = '12', mi = '0', s = '0'] = match;
+const date = new Date(+y, +m - 1, +d, +h, +mi, +s);
 ```
 
 ---
 
-## 📝 Função de Parse Segura
+## 📝 Função de Parse Segura (FORMATO BRASILEIRO)
 
 ```typescript
 /**
- * Parse seguro de datas da API
- * Converte "2024-10-02 09:00:00" → "2024-10-02T09:00:00" → Date
+ * Parse seguro de datas da API (formato brasileiro DD/MM/YYYY HH:mm)
+ * Converte "03/11/2025 18:16" → Date
  */
 function parseApiDate(str: string | null | undefined): Date | null {
   if (!str) return null;
   
-  // Substituir espaço por "T"
-  const iso = str.replace(' ', 'T');
-  const d = new Date(iso);
+  // Formato brasileiro: DD/MM/YYYY HH:mm ou DD/MM/YYYY HH:mm:ss
+  const match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (match) {
+    const [, d, m, y, h = '12', mi = '0', s = '0'] = match;
+    const date = new Date(+y, +m - 1, +d, +h, +mi, +s);
+    if (!isNaN(date.getTime())) return date;
+  }
   
-  // Validar se é data válida
-  if (isNaN(d.getTime())) return null;
-  return d;
+  // Fallback: tentar parse direto
+  const date = new Date(str);
+  if (!isNaN(date.getTime())) return date;
+  
+  return null;
 }
 ```
 
 **Uso:**
 ```typescript
-const dataStr = "2024-10-02 09:00:00"; // Da API
+const dataStr = "03/11/2025 18:16"; // Da API (formato brasileiro)
 const dataObj = parseApiDate(dataStr); // ✅ Date válido
 
 if (dataObj) {
-  console.log(dataObj.toLocaleDateString('pt-BR')); // "02/10/2024"
+  console.log(dataObj.toLocaleDateString('pt-BR')); // "03/11/2025"
+  console.log(dataObj.getHours());                   // 18
+  console.log(dataObj.getMinutes());                 // 16
 }
 ```
 

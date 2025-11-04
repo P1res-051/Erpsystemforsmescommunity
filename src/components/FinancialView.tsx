@@ -162,16 +162,23 @@ export function FinancialView({ data, daysToShow = 7 }: Props) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Importar função de parse seguro
+  // Parse seguro de datas brasileiras (DD/MM/YYYY HH:mm)
   const parseApiDate = (str: string | null | undefined): Date | null => {
     if (!str) return null;
     
-    // "2024-10-02 09:00:00" -> "2024-10-02T09:00:00"
-    const iso = str.replace(' ', 'T');
-    const d = new Date(iso);
+    // Formato: DD/MM/YYYY HH:mm ou DD/MM/YYYY HH:mm:ss
+    const match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (match) {
+      const [, d, m, y, h = '12', mi = '0', s = '0'] = match;
+      const date = new Date(+y, +m - 1, +d, +h, +mi, +s);
+      if (!isNaN(date.getTime())) return date;
+    }
     
-    if (isNaN(d.getTime())) return null;
-    return d;
+    // Fallback para outros formatos
+    const date = new Date(str);
+    if (!isNaN(date.getTime())) return date;
+    
+    return null;
   };
   
   // Agrupar conversões e renovações por data
